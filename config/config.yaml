@@ -1,0 +1,3 @@
+# Pipeline configuration
+samples: "config/samples.tsv"
+output_dir: "results/"
