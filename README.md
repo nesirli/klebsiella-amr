@@ -199,7 +199,7 @@ The workflow consists of 20 interconnected stages, organized into 5 functional g
 **Stage 8: Feature Matrix** (`rules/08_feature_matrix.smk`)
 - Combine AMR genes + SNPs into unified matrix
 - Encode as binary (0/1) features
-- 1.2M total features × 2,100 samples
+- 1.2M total features × 1,372 samples
 - Output: `results/features/feature_matrix_raw.csv`
 
 **Stage 9: Feature Selection** (`rules/09_feature_selection.smk`)
@@ -429,7 +429,7 @@ feature_selection:
 
 | Metric | Value |
 |--------|-------|
-| Samples analyzed | 2,100 *K. pneumoniae* genomes |
+| Samples analyzed | 1,372 *K. pneumoniae* genomes |
 | Training samples | 1,900 (pre-2023) |
 | Test samples | 200 (2023-2024) |
 | AMR genes detected | ~1,000 unique resistance determinants |
@@ -729,7 +729,7 @@ SRR24673238,1,1,0,...
 **Location:** `results/features/`
 
 **Key files:**
-- `tree_models/{antibiotic}_{train|test}_final.csv` - Feature matrix (2,100 samples × 325 features)
+- `tree_models/{antibiotic}_{train|test}_final.csv` - Feature matrix (1,372 samples × 325 features)
 - `deep_models/{antibiotic}_{kmer|dnabert}_{train|test}_final.npz` - Encoded sequences
 - `{antibiotic}_feature_importance.csv` - Feature scores
 - `{antibiotic}_selection_report.json` - Selection statistics
@@ -1142,7 +1142,7 @@ snakemake --use-conda --cores 32 --forceall
 **Source:** NCBI Pathogen Detection (*Klebsiella pneumoniae* isolates with AMR phenotypes)
 
 **Summary:**
-- **Total isolates:** ~2,100 *K. pneumoniae* genomes
+- **Total isolates:** 1,372 *K. pneumoniae* genomes
 - **Training set:** 1,900 isolates (pre-2023 collection dates)
 - **Test set:** 200 isolates (2023-2024 collection dates, temporal hold-out)
 - **Sequencing:** Illumina short-read data (mean coverage 100x)
