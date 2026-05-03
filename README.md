@@ -1236,20 +1236,6 @@ python -m pytest tests/ -k "test_ensemble" -v
 - `test_motif_analysis.py` - Biological feature validation
 - `test_output_validation.py` - Result standardization and JSON schema
 
-## 📖 Citation
-
-If you use this pipeline in your research, please cite:
-
-```bibtex
-@mastersthesis{nasirli2025klebsiella,
-  author = {Nasirli, Nasir},
-  title = {Interpretable Deep-Learning and Ensemble Models for Predicting Multidrug Resistance in Klebsiella pneumoniae},
-  school = {University of Birmingham School of Biosciences},
-  year = {2025},
-  month = {May},
-  note = {MSc Bioinformatics thesis}
-}
-```
 
 **See also:** `thesis/final-dissertation.pdf` for full methodology, results, and references.
 
@@ -1262,23 +1248,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 **Nasir Nasirli**  
 MSc Bioinformatics, University of Birmingham  
 Student ID: 2684202  
-Contact: n.nasirli@bham.ac.uk
-
-## 🤝 Contributing
-
-Contributions are welcome! Please:
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/improvement`)
-3. Make changes with clear commit messages
-4. Run tests: `pytest tests/`
-5. Push to branch and create a Pull Request
-
-**Guidelines:**
-- Write unit tests for new functionality
-- Follow PEP 8 style guidelines
-- Update documentation for significant changes
-- Ensure all tests pass before submitting PR
+Contact: nasir.nesirli@gmail.com
 
 ## 🔗 Links
 
@@ -1315,13 +1285,7 @@ Contributions are welcome! Please:
 - Git tags mark manuscript submission versions
 
 ### Known Limitations
-- Deep learning models underperform due to dataset size (~2,000 samples)
+- Deep learning models underperform due to dataset size
 - DNABERT fine-tuning requires GPU for reasonable runtime (~24 hours/CPU)
 - Some rare resistance phenotypes have small test set sizes
 - Geographic representation skewed toward North America/Europe in NCBI data
-
----
-
-**Last Updated:** May 2026  
-**Pipeline Version:** 1.0  
-**Status:** Stable (dissertation submitted)
