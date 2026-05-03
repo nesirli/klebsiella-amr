@@ -199,7 +199,7 @@ The workflow consists of 20 interconnected stages, organized into 5 functional g
 **Stage 8: Feature Matrix** (`rules/08_feature_matrix.smk`)
 - Combine AMR genes + SNPs into unified matrix
 - Encode as binary (0/1) features
-- 1.2M total features × 1,372 samples
+- 1.2M total features × 1,372 samples (stratified by antibiotic phenotype)
 - Output: `results/features/feature_matrix_raw.csv`
 
 **Stage 9: Feature Selection** (`rules/09_feature_selection.smk`)
@@ -430,14 +430,16 @@ feature_selection:
 | Metric | Value |
 |--------|-------|
 | Samples analyzed | 1,372 *K. pneumoniae* genomes |
-| Training samples | 1,900 (pre-2023) |
-| Test samples | 200 (2023-2024) |
+| Training samples | 403–1,044 (pre-2023)* |
+| Test samples | 74–99 (2023-2024)* |
 | AMR genes detected | ~1,000 unique resistance determinants |
 | SNPs identified | ~1.2 million core-genome variants |
 | Features selected | 325 (99.97% reduction from 1.2M) |
 | Models trained | 5 (XGBoost, LightGBM, 1D CNN, Sequence CNN, DNABERT) |
 | Targets | 4 antibiotics × 5 models = 20 models |
 | CV folds | 5-fold geographic stratification |
+
+*Ranges reflect phenotype-stratified splits: samples with missing resistance data for a given antibiotic are excluded. Meropenem: 417 train/99 test; Ciprofloxacin: 434 train/87 test; Ceftazidime: 1,044 train/74 test; Amikacin: 403 train/77 test.*
 
 ### Overall Performance (Temporal Validation: 2023-2024 Test Set)
 
@@ -514,11 +516,22 @@ feature_selection:
 
 ### Key Findings
 
-1. **Tree-based models dominate:** XGBoost and LightGBM consistently outperform deep learning (20-50% higher F1-scores). Gradient boosting effectively models feature interactions without needing massive datasets.
+1. **Tree-based models dominate:** XGBoost and LightGBM consistently outperform deep learning (20-50% higher F1-scores). **Why tree models win:**
+   - Gradient boosting efficiently learns from small datasets (403–1,044 samples per antibiotic)
+   - Few hyperparameters (max_depth=3-5, n_estimators=100-500) require less tuning than neural networks
+   - Built-in feature selection; learns non-linear interactions naturally
+   - Robust to high-dimensional data after feature reduction (325 features)
+   - No risk of catastrophic overfitting with 4.2 samples-per-feature ratio (vs. 0.0017 before selection)
 
 2. **Ceftazidime achievable with clinical accuracy:** LightGBM achieves F1=0.857 on ceftazidime (meets F1≥0.85 clinical threshold). Carbapenem resistance has clear genomic basis.
 
-3. **Deep learning limited by data scale:** DNABERT and Sequence CNN dramatically underperform, suggesting need for 10K+ genomic samples for effective transformer/CNN training.
+3. **Deep learning catastrophically fails:** DNABERT and Sequence CNN dramatically underperform. **Why DNABERT failed:**
+   - DNABERT-2 has 117M parameters; training set only ~400 samples per antibiotic (366K parameters per sample)
+   - Pre-trained transformers require 10K+ fine-tuning samples; this dataset 10–25× too small
+   - Evidence of failure: CV AUC ≈ 0.52 (random guessing), F1 ranges 0.0–0.739 within 5 folds (wild variance = overfitting)
+   - Model learns noise, not signal: test F1 drops to 0.0–0.34 (vs. CV optimism of 0.15–0.74)
+   - Fold 3 predicts all susceptible [120 TN, 0 FP; 96 FN, 0 TP], fold 0 predicts uniformly at chance
+   - **Solution:** Would need 5K–10K training samples or significant regularization (aggressive dropout, LoRA, prompt tuning)
 
 4. **Temporal generalization works:** Models trained on pre-2023 data predict 2023-2024 isolates well, indicating learned resistance mechanisms are stable across time.
 
@@ -729,7 +742,7 @@ SRR24673238,1,1,0,...
 **Location:** `results/features/`
 
 **Key files:**
-- `tree_models/{antibiotic}_{train|test}_final.csv` - Feature matrix (1,372 samples × 325 features)
+- `tree_models/{antibiotic}_{train|test}_final.csv` - Feature matrix (403–1,044 samples × 325 features, varies by antibiotic)
 - `deep_models/{antibiotic}_{kmer|dnabert}_{train|test}_final.npz` - Encoded sequences
 - `{antibiotic}_feature_importance.csv` - Feature scores
 - `{antibiotic}_selection_report.json` - Selection statistics
