@@ -2,6 +2,7 @@ nextflow.enable.dsl = 2
 
 include { PARSE_METADATA } from './modules/metadata.nf'
 include { DOWNLOAD_READS } from './modules/download.nf'
+include { FASTP }          from './modules/fastp.nf'
 
 workflow {
     PARSE_METADATA(file(params.metadata))
@@ -13,4 +14,5 @@ workflow {
         .take(params.max_samples.toInteger())
 
     DOWNLOAD_READS(samples_ch)
+    FASTP(DOWNLOAD_READS.out)
 }
