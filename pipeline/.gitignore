@@ -1,3 +1,6 @@
 work/
 .nextflow*
 results/
+.venv/
+__pycache__/
+*.pyc
