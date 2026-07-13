@@ -1,5 +1,7 @@
 nextflow.enable.dsl = 2
 
+include { PARSE_METADATA } from './modules/metadata.nf'
+
 workflow {
-    log.info "kleb-amr-ml pipeline — metadata: ${params.metadata}"
+    PARSE_METADATA(file(params.metadata))
 }
