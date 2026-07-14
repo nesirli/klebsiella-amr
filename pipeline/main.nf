@@ -11,6 +11,8 @@ include { MULTIQC as MULTIQC_FASTP }   from './modules/multiqc.nf'
 include { MULTIQC as MULTIQC_KRAKEN2 } from './modules/multiqc.nf'
 include { MULTIQC as MULTIQC_QUAST }   from './modules/multiqc.nf'
 include { AMRFINDER_DB; AMRFINDER }    from './modules/amrfinder.nf'
+include { REFERENCE_GENOME }           from './modules/reference.nf'
+include { SNIPPY }                     from './modules/snippy.nf'
 
 workflow {
     main:
@@ -39,6 +41,9 @@ workflow {
     AMRFINDER_DB()
     AMRFINDER(ASSEMBLY.out.fasta, AMRFINDER_DB.out.first())
 
+    REFERENCE_GENOME()
+    SNIPPY(FASTP.out.trimmed, REFERENCE_GENOME.out.first())
+
     publish:
     metadata_train   = PARSE_METADATA.out.train
     metadata_test    = PARSE_METADATA.out.test
@@ -52,6 +57,7 @@ workflow {
     kraken2_multiqc  = MULTIQC_KRAKEN2.out.report
     quast_multiqc    = MULTIQC_QUAST.out.report
     amr_report       = AMRFINDER.out.report
+    snippy_vcf       = SNIPPY.out.vcf
 }
 
 output {
@@ -90,5 +96,8 @@ output {
     }
     amr_report {
         path 'amr'
+    }
+    snippy_vcf {
+        path 'snippy'
     }
 }
