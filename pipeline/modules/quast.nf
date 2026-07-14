@@ -7,15 +7,13 @@ process QUAST {
     tuple val(run_accession), path(assembly_fasta)
 
     output:
-    tuple val(run_accession), path("${run_accession}_quast_report.tsv"), emit: report
+    tuple val(run_accession), path("${run_accession}/report.tsv"), emit: report
 
     script:
     """
     quast.py \\
-        --output-dir quast_out \\
+        --output-dir ${run_accession} \\
         --threads ${task.cpus} \\
         ${assembly_fasta}
-
-    mv quast_out/report.tsv ${run_accession}_quast_report.tsv
     """
 }
