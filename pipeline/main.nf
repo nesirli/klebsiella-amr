@@ -10,6 +10,7 @@ include { QUAST }                 from './modules/quast.nf'
 include { MULTIQC as MULTIQC_FASTP }   from './modules/multiqc.nf'
 include { MULTIQC as MULTIQC_KRAKEN2 } from './modules/multiqc.nf'
 include { MULTIQC as MULTIQC_QUAST }   from './modules/multiqc.nf'
+include { AMRFINDER_DB; AMRFINDER }    from './modules/amrfinder.nf'
 
 workflow {
     main:
@@ -35,6 +36,9 @@ workflow {
     MULTIQC_KRAKEN2('kraken2', KRAKEN2.out.report.map { it[1] }.collect())
     MULTIQC_QUAST('quast',     QUAST.out.report.map { it[1] }.collect())
 
+    AMRFINDER_DB()
+    AMRFINDER(ASSEMBLY.out.fasta, AMRFINDER_DB.out.first())
+
     publish:
     metadata_train   = PARSE_METADATA.out.train
     metadata_test    = PARSE_METADATA.out.test
@@ -47,6 +51,7 @@ workflow {
     fastp_multiqc    = MULTIQC_FASTP.out.report
     kraken2_multiqc  = MULTIQC_KRAKEN2.out.report
     quast_multiqc    = MULTIQC_QUAST.out.report
+    amr_report       = AMRFINDER.out.report
 }
 
 output {
@@ -82,5 +87,8 @@ output {
     }
     quast_multiqc {
         path 'multiqc'
+    }
+    amr_report {
+        path 'amr'
     }
 }
