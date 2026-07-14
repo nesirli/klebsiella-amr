@@ -5,6 +5,7 @@ include { DOWNLOAD_READS }        from './modules/download.nf'
 include { FASTP }                 from './modules/fastp.nf'
 include { KRAKEN2_DB; KRAKEN2 }   from './modules/kraken2.nf'
 include { DOWNSAMPLE }            from './modules/downsample.nf'
+include { ASSEMBLY }              from './modules/assembly.nf'
 
 workflow {
     main:
@@ -23,6 +24,7 @@ workflow {
     KRAKEN2(FASTP.out.trimmed, KRAKEN2_DB.out.first())
 
     DOWNSAMPLE(FASTP.out.trimmed.join(FASTP.out.json))
+    ASSEMBLY(DOWNSAMPLE.out.reads)
 
     publish:
     metadata_train = PARSE_METADATA.out.train
@@ -31,6 +33,7 @@ workflow {
     qc_html        = FASTP.out.html
     kraken2_report = KRAKEN2.out.report
     downsampled    = DOWNSAMPLE.out.reads
+    assembly       = ASSEMBLY.out.fasta
 }
 
 output {
@@ -51,5 +54,8 @@ output {
     }
     downsampled {
         path 'downsampled'
+    }
+    assembly {
+        path 'assembly'
     }
 }
