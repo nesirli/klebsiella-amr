@@ -17,14 +17,13 @@ process KRAKEN2 {
     tag "$run_accession"
     container 'quay.io/biocontainers/kraken2:2.1.5--pl5321h077b44d_0'
     cpus 4
-    publishDir "${params.outdir}/kraken2", mode: 'copy'
 
     input:
     tuple val(run_accession), path(reads1), path(reads2)
     path db_dir
 
     output:
-    tuple val(run_accession), path("${run_accession}_kraken2_report.txt")
+    tuple val(run_accession), path("${run_accession}_kraken2_report.txt"), emit: report
 
     script:
     """

@@ -2,7 +2,6 @@ process FASTP {
     tag "$run_accession"
     container 'quay.io/biocontainers/fastp:1.3.3--h43da1c4_0'
     cpus 4
-    publishDir "${params.outdir}/qc", mode: 'copy', pattern: "*_fastp.{json,html}"
 
     input:
     tuple val(run_accession), path(reads1), path(reads2)
@@ -10,7 +9,7 @@ process FASTP {
     output:
     tuple val(run_accession), path("${run_accession}_trimmed_1.fastq.gz"), path("${run_accession}_trimmed_2.fastq.gz"), emit: trimmed
     tuple val(run_accession), path("${run_accession}_fastp.json"), emit: json
-    path "${run_accession}_fastp.html"
+    tuple val(run_accession), path("${run_accession}_fastp.html"), emit: html
 
     script:
     """

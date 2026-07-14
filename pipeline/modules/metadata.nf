@@ -1,12 +1,10 @@
 process PARSE_METADATA {
-    publishDir "${params.outdir}/metadata", mode: 'copy'
-
     input:
     path metadata
 
     output:
-    path "train.csv"
-    path "test.csv"
+    path "train.csv", emit: train
+    path "test.csv",  emit: test
 
     script:
     def antibiotics = params.antibiotics.join(' ')
