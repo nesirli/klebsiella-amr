@@ -6,6 +6,7 @@ include { FASTP }                 from './modules/fastp.nf'
 include { KRAKEN2_DB; KRAKEN2 }   from './modules/kraken2.nf'
 include { DOWNSAMPLE }            from './modules/downsample.nf'
 include { ASSEMBLY }              from './modules/assembly.nf'
+include { QUAST }                 from './modules/quast.nf'
 
 workflow {
     main:
@@ -25,6 +26,7 @@ workflow {
 
     DOWNSAMPLE(FASTP.out.trimmed.join(FASTP.out.json))
     ASSEMBLY(DOWNSAMPLE.out.reads)
+    QUAST(ASSEMBLY.out.fasta)
 
     publish:
     metadata_train = PARSE_METADATA.out.train
@@ -34,6 +36,7 @@ workflow {
     kraken2_report = KRAKEN2.out.report
     downsampled    = DOWNSAMPLE.out.reads
     assembly       = ASSEMBLY.out.fasta
+    quast_report   = QUAST.out.report
 }
 
 output {
@@ -57,5 +60,8 @@ output {
     }
     assembly {
         path 'assembly'
+    }
+    quast_report {
+        path 'quast'
     }
 }
