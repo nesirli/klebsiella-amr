@@ -1,3 +1,7 @@
+#!/usr/bin/env python3
+# /// script
+# dependencies = ["pandas"]
+# ///
 import argparse
 import re
 from pathlib import Path
