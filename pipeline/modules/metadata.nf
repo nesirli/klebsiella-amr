@@ -1,4 +1,6 @@
 process PARSE_METADATA {
+    container 'ghcr.io/astral-sh/uv:python3.12-bookworm-slim'
+
     input:
     path metadata
 
@@ -10,7 +12,7 @@ process PARSE_METADATA {
     def antibiotics = params.antibiotics.join(' ')
     def test_years  = params.test_years.join(' ')
     """
-    uv run --project ${projectDir} python ${projectDir}/scripts/metadata.py \\
+    uv run "\$(command -v metadata.py)" \\
         --input ${metadata} \\
         --train-output train.csv \\
         --test-output test.csv \\
