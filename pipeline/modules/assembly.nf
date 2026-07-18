@@ -1,8 +1,8 @@
 process ASSEMBLY {
     tag "$run_accession"
     container 'quay.io/biocontainers/spades:4.2.0--h8d6e82b_1'
-    cpus 8
-    memory '16 GB'
+    cpus 6
+    memory '10 GB'
 
     input:
     tuple val(run_accession), path(reads1), path(reads2)
