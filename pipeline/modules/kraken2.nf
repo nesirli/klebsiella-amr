@@ -17,6 +17,7 @@ process KRAKEN2 {
     tag "$run_accession"
     container 'quay.io/biocontainers/kraken2:2.1.5--pl5321h077b44d_0'
     cpus 4
+    memory '8 GB'
 
     input:
     tuple val(run_accession), path(reads1), path(reads2)

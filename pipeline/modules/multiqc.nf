@@ -4,7 +4,7 @@ process MULTIQC {
 
     input:
     val report_name
-    path qc_files
+    path qc_files, stageAs: 'input*/*'
 
     output:
     path "${report_name}_multiqc_report.html", emit: report

@@ -2,6 +2,7 @@ process SNIPPY {
     tag "$run_accession"
     container 'quay.io/biocontainers/snippy:4.6.0--hdfd78af_6'
     cpus 4
+    memory '4 GB'
 
     input:
     tuple val(run_accession), path(reads1), path(reads2)

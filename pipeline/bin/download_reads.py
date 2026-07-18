@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import argparse
+import os
 import sys
 import time
 import urllib.request
@@ -20,7 +21,23 @@ def fetch_fastq_urls(run_accession):
 def download(url, dest, retries=5, retry_delay=5):
     for attempt in range(1, retries + 1):
         try:
-            urllib.request.urlretrieve(url, dest)
+            existing = os.path.getsize(dest) if os.path.exists(dest) else 0
+            req = urllib.request.Request(url)
+            if existing:
+                req.add_header("Range", f"bytes={existing}-")
+
+            with urllib.request.urlopen(req) as resp:
+                mode = "ab" if existing and resp.status == 206 else "wb"
+                if mode == "wb":
+                    existing = 0
+                with open(dest, mode) as f:
+                    while chunk := resp.read(1024 * 1024):
+                        f.write(chunk)
+
+            expected = existing + int(resp.headers.get("Content-Length", 0))
+            actual = os.path.getsize(dest)
+            if expected and actual != expected:
+                raise IOError(f"incomplete download: got {actual} of {expected} bytes")
             return
         except Exception as e:
             if attempt == retries:

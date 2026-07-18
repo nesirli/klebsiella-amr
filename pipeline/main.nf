@@ -13,6 +13,8 @@ include { MULTIQC as MULTIQC_QUAST }   from './modules/multiqc.nf'
 include { AMRFINDER_DB; AMRFINDER }    from './modules/amrfinder.nf'
 include { REFERENCE_GENOME }           from './modules/reference.nf'
 include { SNIPPY }                     from './modules/snippy.nf'
+include { BUILD_FEATURES }             from './modules/features.nf'
+include { TRAIN_MODEL }                from './modules/train_model.nf'
 
 workflow {
     main:
@@ -44,6 +46,15 @@ workflow {
     REFERENCE_GENOME()
     SNIPPY(FASTP.out.trimmed, REFERENCE_GENOME.out.first())
 
+    BUILD_FEATURES(
+        AMRFINDER.out.report.map { it[1] }.collect(),
+        PARSE_METADATA.out.train,
+        PARSE_METADATA.out.test
+    )
+
+    antibiotics_ch = Channel.fromList(params.antibiotics)
+    TRAIN_MODEL(antibiotics_ch, BUILD_FEATURES.out.train, BUILD_FEATURES.out.test)
+
     publish:
     metadata_train   = PARSE_METADATA.out.train
     metadata_test    = PARSE_METADATA.out.test
@@ -56,8 +67,12 @@ workflow {
     fastp_multiqc    = MULTIQC_FASTP.out.report
     kraken2_multiqc  = MULTIQC_KRAKEN2.out.report
     quast_multiqc    = MULTIQC_QUAST.out.report
-    amr_report       = AMRFINDER.out.report
-    snippy_vcf       = SNIPPY.out.vcf
+    amr_report        = AMRFINDER.out.report
+    snippy_vcf        = SNIPPY.out.vcf
+    train_features    = BUILD_FEATURES.out.train
+    test_features     = BUILD_FEATURES.out.test
+    model_metrics     = TRAIN_MODEL.out.metrics
+    model_predictions = TRAIN_MODEL.out.predictions
 }
 
 output {
@@ -99,5 +114,17 @@ output {
     }
     snippy_vcf {
         path 'snippy'
+    }
+    train_features {
+        path 'features'
+    }
+    test_features {
+        path 'features'
+    }
+    model_metrics {
+        path 'models'
+    }
+    model_predictions {
+        path 'models'
     }
 }
