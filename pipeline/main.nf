@@ -20,11 +20,23 @@ workflow {
     main:
     PARSE_METADATA(file(params.metadata))
 
-    samples_ch = PARSE_METADATA.out.train
-        .mix(PARSE_METADATA.out.test)
+    // Cap train and test cohorts independently so a small dev run always
+    // spans both year-splits (needed for the model stage to have training
+    // data) rather than clustering into one via mix()+take(). Selection is
+    // deterministic per cohort since splitCsv preserves metadata row order.
+    def max_samples = params.max_samples.toInteger()
+
+    train_ids = PARSE_METADATA.out.train
         .splitCsv(header: true)
         .map { row -> row.run }
-        .take(params.max_samples.toInteger())
+        .take(max_samples)
+
+    test_ids = PARSE_METADATA.out.test
+        .splitCsv(header: true)
+        .map { row -> row.run }
+        .take(max_samples)
+
+    samples_ch = train_ids.mix(test_ids)
 
     DOWNLOAD_READS(samples_ch)
     FASTP(DOWNLOAD_READS.out)
