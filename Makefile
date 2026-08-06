@@ -63,19 +63,20 @@ results/metadata/config.mk: config.yaml scripts/export_config.py
 	$(RUN_AMR) python3 scripts/export_config.py --config config.yaml --output $@
 
 # Metadata ----------------------------------------------------------------------
-metadata: results/metadata/train.csv results/metadata/test.csv results/metadata/samples.mk
+metadata: results/metadata/.done
 
-results/metadata/train.csv results/metadata/test.csv results/metadata/samples.mk results/metadata/samples.txt: $(METADATA) config.yaml scripts/metadata.py results/metadata/config.mk
+results/metadata/train.csv results/metadata/test.csv results/metadata/samples.mk results/metadata/samples.txt: results/metadata/.done
+	@true
+
+results/metadata/.done: config.yaml scripts/metadata.py results/metadata/config.mk
 	mkdir -p results/metadata
 	$(RUN_AMR) python3 scripts/metadata.py \
-		--input $(METADATA) \
+		--config config.yaml \
 		--train-output results/metadata/train.csv \
 		--test-output results/metadata/test.csv \
 		--samples-output results/metadata/samples.txt \
-		--train-cutoff $(TRAIN_CUTOFF) \
-		--test-years $(TEST_YEARS) \
-		--antibiotics $(ANTIBIOTICS) \
 		--max-samples $(MAX_SAMPLES)
+	touch $@
 
 # Reads ------------------------------------------------------------------------
 reads: $(patsubst %,$(READS_DIR)/%_1.fastq.gz,$(SAMPLES))
