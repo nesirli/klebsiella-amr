@@ -102,12 +102,13 @@ def main():
         "subsample": 0.8,
         "colsample_bytree": 0.8,
         "scale_pos_weight": scale_pos_weight,
+        "base_score": 0.5,
         "eval_metric": "logloss",
         "random_state": 42,
     }
     model = XGBClassifier(**hyperparams)
     model.fit(x_train, y_train)
-    model.save_model(args.model_output)
+    model.get_booster().save_model(args.model_output)
 
     params = {**base, "hyperparameters": hyperparams,
               "train_class_balance": {"R": n_pos, "S": n_neg}}

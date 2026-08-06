@@ -11,7 +11,7 @@ dependencies:
   - scikit-learn
   - matplotlib
   - seaborn
-  - xgboost
+  - xgboost=2.0.3
   - lightgbm
   - shap
   - numba>=0.60
@@ -22,4 +22,5 @@ dependencies:
   - transformers==4.29.2
   - einops
   - pyyaml
+  - pytest
   - pip

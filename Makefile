@@ -45,7 +45,7 @@ MODELS_DIR         := $(RESULTS_DIR)/models
 REPORT_DIR         := $(RESULTS_DIR)/report
 
 # Phony targets ----------------------------------------------------------------
-.PHONY: all setup metadata reads qc kraken2 assembly amr features sequences models dnabert report clean
+.PHONY: all setup test metadata reads qc kraken2 assembly amr features sequences models dnabert report clean
 
 all:
 	@if [ -z "$(SAMPLES)" ]; then \
@@ -56,6 +56,9 @@ all:
 setup:
 	mamba env create -f envs/env-ml.yml -n amr
 	mamba env create -f envs/env-bio.yml -n bioinfo
+
+test:
+	$(RUN_AMR) pytest tests/ -v
 
 # Config include ---------------------------------------------------------------
 results/metadata/config.mk: config.yaml scripts/export_config.py
