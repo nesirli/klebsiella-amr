@@ -1,0 +1,25 @@
+name: amr
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  # DNABERT-2 is calibrated on Python <3.12 + transformers 4.29.2,
+  # so pin the whole ML environment to a compatible interpreter.
+  - python=3.11
+  - numpy<2
+  - pandas
+  - scikit-learn
+  - matplotlib
+  - seaborn
+  - xgboost
+  - lightgbm
+  - shap
+  - numba>=0.60
+  - llvmlite>=0.43
+  # CPU-only PyTorch is sufficient for all models here; the solver picks
+  # the correct platform build (including osx-arm64 / Apple Silicon).
+  - pytorch
+  - transformers==4.29.2
+  - einops
+  - pyyaml
+  - pip

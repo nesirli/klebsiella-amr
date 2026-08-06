@@ -1,0 +1,11 @@
+name: bioinfo
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  - fastp
+  - spades
+  - kraken2
+  - ncbi-amrfinderplus
+  - multiqc
+  - seqtk
