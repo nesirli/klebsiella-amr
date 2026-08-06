@@ -18,10 +18,22 @@ def fetch_fastq_urls(run_accession):
     return f"https://{url1}", f"https://{url2}"
 
 
+def _remote_size(url):
+    req = urllib.request.Request(url, method="HEAD")
+    with urllib.request.urlopen(req) as resp:
+        return int(resp.headers.get("Content-Length", 0))
+
+
 def download(url, dest, retries=5, retry_delay=5):
     for attempt in range(1, retries + 1):
         try:
             existing = os.path.getsize(dest) if os.path.exists(dest) else 0
+            remote = _remote_size(url)
+
+            if existing == remote and remote > 0:
+                print(f"{dest}: already complete ({remote} bytes)")
+                return
+
             req = urllib.request.Request(url)
             if existing:
                 req.add_header("Range", f"bytes={existing}-")
@@ -34,10 +46,9 @@ def download(url, dest, retries=5, retry_delay=5):
                     while chunk := resp.read(1024 * 1024):
                         f.write(chunk)
 
-            expected = existing + int(resp.headers.get("Content-Length", 0))
             actual = os.path.getsize(dest)
-            if expected and actual != expected:
-                raise IOError(f"incomplete download: got {actual} of {expected} bytes")
+            if actual != remote:
+                raise IOError(f"incomplete download: got {actual} of {remote} bytes")
             return
         except Exception as e:
             if attempt == retries:
