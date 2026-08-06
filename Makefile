@@ -138,7 +138,7 @@ assembly: $(patsubst %,$(ASSEMBLY_DIR)/%_assembled.fasta,$(SAMPLES)) \
           $(patsubst %,$(ASSEMBLY_STATS_DIR)/%_stats.tsv,$(SAMPLES))
 
 $(DOWNSAMPLED_DIR)/%_1.fastq.gz $(DOWNSAMPLED_DIR)/%_2.fastq.gz &: $(TRIMMED_DIR)/%_1.fastq.gz $(TRIMMED_DIR)/%_2.fastq.gz $(QC_DIR)/%_fastp.json | $(DOWNSAMPLED_DIR)
-	fraction=$$($(RUN_AMR) python3 -c "import json; d=json.load(open('$(QC_DIR)/$*_fastp.json')); cov=d['summary']['after_filtering']['total_bases']/$(GENOME_SIZE); print(min(1.0, $(TARGET_COVERAGE)/cov))"); \
+	fraction=$$($(RUN_AMR) python3 -c "import json; d=json.load(open('$(QC_DIR)/$*_fastp.json')); cov=d['summary']['after_filtering']['total_bases']/$(GENOME_SIZE); print(min(0.999999, $(TARGET_COVERAGE)/cov))"); \
 	$(RUN_BIOINFO) seqtk sample -s42 $(TRIMMED_DIR)/$*_1.fastq.gz $$fraction | gzip > $(DOWNSAMPLED_DIR)/$*_1.fastq.gz; \
 	$(RUN_BIOINFO) seqtk sample -s42 $(TRIMMED_DIR)/$*_2.fastq.gz $$fraction | gzip > $(DOWNSAMPLED_DIR)/$*_2.fastq.gz
 
