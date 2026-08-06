@@ -2,8 +2,14 @@
 # Orchestrated with Make + conda.
 
 # Auto-generated includes ------------------------------------------------------
--include results/metadata/config.mk
--include results/metadata/samples.mk
+# Only include generated config if the amr environment exists; otherwise
+# 'make setup' would try to build config.mk before the environment exists.
+CONDA_BASE := $(shell conda info --base 2>/dev/null)
+AMR_ENV := $(wildcard $(CONDA_BASE)/envs/amr)
+ifneq ($(AMR_ENV),)
+  -include results/metadata/config.mk
+  -include results/metadata/samples.mk
+endif
 
 # Conda runners ----------------------------------------------------------------
 RUN_AMR     := conda run --no-capture-output -n amr
