@@ -1,11 +1,4 @@
 #!/usr/bin/env python3
-# /// script
-# dependencies = [
-#   "pandas", "numpy", "scikit-learn", "xgboost", "matplotlib",
-#   # shap pulls numba/llvmlite; pin modern versions with py3.12 wheels.
-#   "shap>=0.46", "numba>=0.60", "llvmlite>=0.43",
-# ]
-# ///
 """Train + test + interpret one XGBoost resistance classifier per antibiotic.
 
 Self-contained per-model script (matches the pipeline's one-script-per-model

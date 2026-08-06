@@ -1,15 +1,4 @@
 #!/usr/bin/env python3
-# /// script
-# dependencies = ["pandas", "numpy", "scikit-learn", "matplotlib", "torch"]
-#
-# [[tool.uv.index]]
-# name = "pytorch-cpu"
-# url = "https://download.pytorch.org/whl/cpu"
-# explicit = true
-#
-# [tool.uv.sources]
-# torch = { index = "pytorch-cpu" }
-# ///
 """Train + test + interpret an MLP resistance classifier per antibiotic.
 
 A fully-connected network on the AMR-gene presence/absence matrix -- the

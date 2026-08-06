@@ -1,10 +1,4 @@
 #!/usr/bin/env python3
-# /// script
-# dependencies = [
-#   "pandas", "numpy", "scikit-learn", "lightgbm", "matplotlib",
-#   "shap>=0.46", "numba>=0.60", "llvmlite>=0.43",
-# ]
-# ///
 """Train + test + interpret one LightGBM resistance classifier per antibiotic.
 
 Self-contained per-model script. Produces: saved model, hyperparameters,

@@ -1,7 +1,4 @@
 #!/usr/bin/env python3
-# /// script
-# dependencies = ["pandas"]
-# ///
 """Build a per-sample AMR-gene *nucleotide sequence* matrix for DNABERT-2.
 
 The sequence-level analogue of build_features.py. Instead of a 0/1 presence

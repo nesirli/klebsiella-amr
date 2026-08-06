@@ -1,19 +1,4 @@
 #!/usr/bin/env python3
-# /// script
-# requires-python = ">=3.11,<3.12"
-# dependencies = [
-#   "pandas", "numpy<2", "scikit-learn", "matplotlib",
-#   "torch", "transformers==4.29.2", "einops",
-# ]
-#
-# [[tool.uv.index]]
-# name = "pytorch"
-# url = "https://download.pytorch.org/whl/cpu"
-# explicit = true
-#
-# [tool.uv.sources]
-# torch = { index = "pytorch" }
-# ///
 # torch defaults to the CPU wheel (lean local runs, and the reproducible build
 # the planted-signal test is calibrated on -- the CUDA build's CPU kernels
 # train measurably differently). The GPU Spot CE needs the CUDA wheel instead;

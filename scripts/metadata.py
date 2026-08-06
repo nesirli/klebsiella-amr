@@ -1,7 +1,4 @@
 #!/usr/bin/env python3
-# /// script
-# dependencies = ["pandas"]
-# ///
 import argparse
 import re
 from pathlib import Path
@@ -23,9 +20,12 @@ def parse_args():
     parser.add_argument("--input", required=True)
     parser.add_argument("--train-output", required=True)
     parser.add_argument("--test-output", required=True)
+    parser.add_argument("--samples-output", required=True)
     parser.add_argument("--train-cutoff", type=int, required=True)
     parser.add_argument("--test-years", type=int, nargs="+", required=True)
     parser.add_argument("--antibiotics", nargs="+", required=True)
+    parser.add_argument("--max-samples", type=int, default=-1,
+                        help="Cap each split at N samples; -1 means no cap")
     return parser.parse_args()
 
 
@@ -34,6 +34,7 @@ def main():
 
     Path(args.train_output).parent.mkdir(parents=True, exist_ok=True)
     Path(args.test_output).parent.mkdir(parents=True, exist_ok=True)
+    Path(args.samples_output).parent.mkdir(parents=True, exist_ok=True)
 
     df = pd.read_csv(args.input, sep=";", encoding="utf-8-sig")
     df.columns = (
@@ -53,8 +54,15 @@ def main():
     train_df = df[df["year"] <= args.train_cutoff]
     test_df = df[df["year"].isin(args.test_years)]
 
+    if args.max_samples > 0:
+        train_df = train_df.head(args.max_samples)
+        test_df = test_df.head(args.max_samples)
+
     train_df.to_csv(args.train_output, index=False)
     test_df.to_csv(args.test_output, index=False)
+
+    samples = sorted(set(train_df["run"]).union(set(test_df["run"])))
+    Path(args.samples_output).write_text("\n".join(samples) + "\n")
 
     print(f"train: {len(train_df)} samples | test: {len(test_df)} samples")
 
