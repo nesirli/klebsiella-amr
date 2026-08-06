@@ -1,0 +1,13 @@
+# Generated data and results
+data/
+results/
+reference/
+
+# Conda / Python
+*.pyc
+__pycache__/
+*.egg-info/
+.ipynb_checkpoints/
+
+# OS
+.DS_Store
