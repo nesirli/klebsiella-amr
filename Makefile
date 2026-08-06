@@ -54,8 +54,8 @@ all:
 	$(MAKE) report
 
 setup:
-	mamba env create -f environment.yml -n amr
-	mamba env create -f environment-bioinfo.yml -n bioinfo
+	mamba env create -f envs/env-ml.yml -n amr
+	mamba env create -f envs/env-bio.yml -n bioinfo
 
 # Config include ---------------------------------------------------------------
 results/metadata/config.mk: config.yaml scripts/export_config.py

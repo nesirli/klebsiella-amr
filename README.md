@@ -18,21 +18,21 @@ A minimal, reproducible pipeline that predicts antimicrobial resistance (AMR) in
 
 ```bash
 # 1. Create conda environments
-mamba env create -f environment.yml
-mamba env create -f environment-bioinfo.yml
+mamba env create -f envs/env-ml.yml
+mamba env create -f envs/env-bio.yml
 
 # 2. Dev run with 5 samples per split
 #    Use 'gmake' on macOS; 'make' on Linux
-make metadata MAX_SAMPLES=5
-make -j 4 all
+gmake metadata MAX_SAMPLES=5
+gmake -j 4 all
 
 # 3. Larger dev run
-make metadata MAX_SAMPLES=20
-make -j 4 all
+gmake metadata MAX_SAMPLES=20
+gmake -j 4 all
 
 # 4. Full run
-make metadata MAX_SAMPLES=-1
-make -j 8 all
+gmake metadata MAX_SAMPLES=-1
+gmake -j 8 all
 ```
 
 ## Configuration
@@ -68,8 +68,9 @@ Edit `config.yaml` to change:
 .
 ├── Makefile                  # pipeline orchestration
 ├── config.yaml               # user-editable configuration
-├── environment.yml           # amr: Python + ML dependencies
-├── environment-bioinfo.yml   # bioinfo: fastp, spades, kraken2, amrfinderplus, multiqc, seqtk
+├── envs/
+│   ├── env-ml.yml            # amr: Python + ML dependencies
+│   └── env-bio.yml           # bioinfo: fastp, spades, kraken2, amrfinderplus, multiqc, seqtk
 ├── metadata.csv              # input metadata (semicolon-delimited)
 ├── scripts/
 │   ├── metadata.py
