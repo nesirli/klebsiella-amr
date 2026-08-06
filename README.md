@@ -22,6 +22,7 @@ mamba env create -f environment.yml
 mamba env create -f environment-bioinfo.yml
 
 # 2. Dev run with 5 samples per split
+#    Use 'gmake' on macOS; 'make' on Linux
 make metadata MAX_SAMPLES=5
 make -j 4 all
 

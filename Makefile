@@ -1,5 +1,11 @@
 # Klebsiella pneumoniae AMR prediction pipeline
-# Orchestrated with Make + conda.
+# Orchestrated with GNU Make + conda.
+
+# macOS ships BSD make by default; this Makefile uses GNU Make features
+# (group targets, pattern rules). On macOS install gmake and run 'gmake'.
+ifeq ($(findstring .,$(MAKE_VERSION)),)
+  $(error This Makefile requires GNU Make. On macOS: brew install make && gmake)
+endif
 
 # Auto-generated includes ------------------------------------------------------
 # Only include generated config if the amr environment exists; otherwise
