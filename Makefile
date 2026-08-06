@@ -7,6 +7,9 @@ ifeq ($(findstring .,$(MAKE_VERSION)),)
   $(error This Makefile requires GNU Make. On macOS: brew install make && gmake)
 endif
 
+# Preserve intermediate files (reads, trimmed, assemblies, etc.)
+.SECONDARY:
+
 # Auto-generated includes ------------------------------------------------------
 # Only include generated config if the amr environment exists; otherwise
 # 'make setup' would try to build config.mk before the environment exists.
@@ -180,29 +183,37 @@ $(AMR_DIR):
 	mkdir -p $@
 
 # Features (tabular) -----------------------------------------------------------
-features: $(FEATURES_DIR)/train_features.csv $(FEATURES_DIR)/test_features.csv
+features: $(FEATURES_DIR)/.done
 
-$(FEATURES_DIR)/train_features.csv $(FEATURES_DIR)/test_features.csv: $(patsubst %,$(AMR_DIR)/%_amr.tsv,$(SAMPLES)) results/metadata/train.csv results/metadata/test.csv scripts/build_features.py | $(FEATURES_DIR)
+$(FEATURES_DIR)/train_features.csv $(FEATURES_DIR)/test_features.csv: $(FEATURES_DIR)/.done
+	@true
+
+$(FEATURES_DIR)/.done: $(patsubst %,$(AMR_DIR)/%_amr.tsv,$(SAMPLES)) results/metadata/train.csv results/metadata/test.csv scripts/build_features.py | $(FEATURES_DIR)
 	$(RUN_AMR) python3 scripts/build_features.py \
 		--amr-files $(wildcard $(AMR_DIR)/*_amr.tsv) \
 		--train-metadata results/metadata/train.csv \
 		--test-metadata results/metadata/test.csv \
 		--train-output $(FEATURES_DIR)/train_features.csv \
 		--test-output $(FEATURES_DIR)/test_features.csv
+	touch $@
 
 $(FEATURES_DIR):
 	mkdir -p $@
 
 # Sequences (for optional DNABERT-2) -------------------------------------------
-sequences: $(SEQUENCES_DIR)/train_sequences.csv $(SEQUENCES_DIR)/test_sequences.csv
+sequences: $(SEQUENCES_DIR)/.done
 
-$(SEQUENCES_DIR)/train_sequences.csv $(SEQUENCES_DIR)/test_sequences.csv: $(patsubst %,$(AMR_DIR)/%_amr_genes.fna,$(SAMPLES)) results/metadata/train.csv results/metadata/test.csv scripts/build_sequences.py | $(SEQUENCES_DIR)
+$(SEQUENCES_DIR)/train_sequences.csv $(SEQUENCES_DIR)/test_sequences.csv: $(SEQUENCES_DIR)/.done
+	@true
+
+$(SEQUENCES_DIR)/.done: $(patsubst %,$(AMR_DIR)/%_amr_genes.fna,$(SAMPLES)) results/metadata/train.csv results/metadata/test.csv scripts/build_sequences.py | $(SEQUENCES_DIR)
 	$(RUN_AMR) python3 scripts/build_sequences.py \
 		--seq-files $(wildcard $(AMR_DIR)/*_amr_genes.fna) \
 		--train-metadata results/metadata/train.csv \
 		--test-metadata results/metadata/test.csv \
 		--train-output $(SEQUENCES_DIR)/train_sequences.csv \
 		--test-output $(SEQUENCES_DIR)/test_sequences.csv
+	touch $@
 
 $(SEQUENCES_DIR):
 	mkdir -p $@
