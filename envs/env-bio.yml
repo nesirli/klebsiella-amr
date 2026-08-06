@@ -3,9 +3,13 @@ channels:
   - conda-forge
   - bioconda
 dependencies:
+  - python=3.12
   - fastp
   - spades
   - kraken2
   - ncbi-amrfinderplus
   - multiqc
   - seqtk
+  - pip
+  - pip:
+    - quast
