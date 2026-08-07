@@ -64,9 +64,10 @@ REPORT_DIR      := $(RESULTS_DIR)/report
 
 all:
 	@if [ -z "$(SAMPLES)" ]; then \
-		echo "ERROR: run 'make metadata MAX_SAMPLES=...' first"; exit 1; \
+		$(MAKE) metadata MAX_SAMPLES=$(MAX_SAMPLES) && $(MAKE) all MAX_SAMPLES=$(MAX_SAMPLES); \
+	else \
+		$(MAKE) report; \
 	fi
-	$(MAKE) report
 
 setup:
 	mamba env create -f envs/env-ml.yml -n amr
@@ -282,7 +283,12 @@ $(MODELS_DIR)/nn/tune_%.json: $(FEATURES_DIR)/train_features.csv scripts/tune_nn
 		--output $@
 
 # Models -----------------------------------------------------------------------
-models: $(MODELS_DIR)/.done
+models:
+	@if [ -z "$(SAMPLES)" ]; then \
+		$(MAKE) metadata MAX_SAMPLES=$(MAX_SAMPLES) && $(MAKE) models MAX_SAMPLES=$(MAX_SAMPLES); \
+	else \
+		$(MAKE) $(MODELS_DIR)/.done; \
+	fi
 
 $(MODELS_DIR)/.done: $(foreach abx,$(ANTIBIOTICS),$(MODELS_DIR)/xgboost/$(abx)_metrics.json) \
                      $(foreach abx,$(ANTIBIOTICS),$(MODELS_DIR)/lightgbm/$(abx)_metrics.json) \
@@ -335,7 +341,12 @@ $(MODELS_DIR)/xgboost $(MODELS_DIR)/lightgbm $(MODELS_DIR)/nn:
 	mkdir -p $@
 
 # DNABERT-2 (optional) ---------------------------------------------------------
-dnabert: $(MODELS_DIR)/dnabert/.done
+dnabert:
+	@if [ -z "$(SAMPLES)" ]; then \
+		$(MAKE) metadata MAX_SAMPLES=$(MAX_SAMPLES) && $(MAKE) dnabert MAX_SAMPLES=$(MAX_SAMPLES); \
+	else \
+		$(MAKE) $(MODELS_DIR)/dnabert/.done; \
+	fi
 
 $(MODELS_DIR)/dnabert/.done: $(foreach abx,$(ANTIBIOTICS),$(MODELS_DIR)/dnabert/$(abx)_metrics.json) | $(MODELS_DIR)/dnabert
 	@touch $@
@@ -357,7 +368,12 @@ $(MODELS_DIR)/dnabert:
 	mkdir -p $@
 
 # MultiQC: aggregate fastp + kraken2 + quast -----------------------------------
-multiqc: $(MULTIQC_DIR)/multiqc_report.html
+multiqc:
+	@if [ -z "$(SAMPLES)" ]; then \
+		$(MAKE) metadata MAX_SAMPLES=$(MAX_SAMPLES) && $(MAKE) multiqc MAX_SAMPLES=$(MAX_SAMPLES); \
+	else \
+		$(MAKE) $(MULTIQC_DIR)/multiqc_report.html; \
+	fi
 
 $(MULTIQC_DIR)/multiqc_report.html: $(QC_DIR)/.done $(KRAKEN_DIR)/.done $(QUAST_DIR)/.done | $(MULTIQC_DIR)
 	$(RUN_BIOINFO) multiqc $(QC_DIR) $(KRAKEN_DIR) $(QUAST_DIR) \
@@ -369,10 +385,13 @@ $(MULTIQC_DIR):
 	mkdir -p $@
 
 # Report / interpretability summary --------------------------------------------
-report: $(REPORT_DIR)/summary.json $(MULTIQC_DIR)/multiqc_report.html
-	@# Final cleanup: keep only final report artifacts. Everything in data/ and
-	@# feature/sequence matrices are intermediates and can be huge for 1000+ samples.
-	rm -rf $(DATA_DIR) $(FEATURES_DIR) $(SEQUENCES_DIR)
+report:
+	@if [ -z "$(SAMPLES)" ]; then \
+		$(MAKE) metadata MAX_SAMPLES=$(MAX_SAMPLES) && $(MAKE) report MAX_SAMPLES=$(MAX_SAMPLES); \
+	else \
+		$(MAKE) $(REPORT_DIR)/summary.json $(MULTIQC_DIR)/multiqc_report.html && \
+		rm -rf $(DATA_DIR) $(FEATURES_DIR) $(SEQUENCES_DIR); \
+	fi
 
 $(REPORT_DIR)/summary.json: $(MODELS_DIR)/.done scripts/summarize.py | $(REPORT_DIR)
 	$(RUN_AMR) python3 scripts/summarize.py \
