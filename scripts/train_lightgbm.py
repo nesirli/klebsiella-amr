@@ -58,6 +58,7 @@ def parse_args():
     p.add_argument("--predictions-output", required=True)
     p.add_argument("--importance-output", required=True)
     p.add_argument("--shap-plot-output", required=True)
+    p.add_argument("--params-input", help="Optional JSON with hyperparameters to override defaults")
     return p.parse_args()
 
 
@@ -110,6 +111,12 @@ def main():
         "random_state": 42,
         "verbose": -1,
     }
+    if args.params_input:
+        with open(args.params_input) as f:
+            tuned = json.load(f)
+        # Keep native imbalance handling unless the tuning run changed it.
+        tuned.pop("is_unbalance", None)
+        hyperparams.update(tuned)
     model = LGBMClassifier(**hyperparams)
     model.fit(x_train, y_train)
     model.booster_.save_model(args.model_output)

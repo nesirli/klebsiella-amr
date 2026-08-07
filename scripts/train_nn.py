@@ -102,6 +102,7 @@ def parse_args():
     p.add_argument("--predictions-output", required=True)
     p.add_argument("--importance-output", required=True)
     p.add_argument("--importance-plot-output", required=True)
+    p.add_argument("--params-input", help="Optional JSON with hyperparameters to override defaults")
     return p.parse_args()
 
 
@@ -137,12 +138,17 @@ def main():
     class_weights = torch.tensor([len(y_train) / (2 * max(n_neg, 1)),
                                   len(y_train) / (2 * max(n_pos, 1))], dtype=torch.float32)
 
-    model = MLP(len(genes), HYPERPARAMS["hidden"], HYPERPARAMS["dropout"])
-    train(model, x_train, y_train, HYPERPARAMS, class_weights)
+    hyperparams = dict(HYPERPARAMS)
+    if args.params_input:
+        with open(args.params_input) as f:
+            hyperparams.update(json.load(f))
+
+    model = MLP(len(genes), hyperparams["hidden"], hyperparams["dropout"])
+    train(model, x_train, y_train, hyperparams, class_weights)
 
     torch.save({"state_dict": model.state_dict(), "input_size": len(genes),
-                "genes": genes, "hyperparameters": HYPERPARAMS}, args.model_output)
-    json.dump({**base, "hyperparameters": HYPERPARAMS,
+                "genes": genes, "hyperparameters": hyperparams}, args.model_output)
+    json.dump({**base, "hyperparameters": hyperparams,
                "train_class_balance": {"R": n_pos, "S": n_neg}},
               open(args.params_output, "w"), indent=2)
 

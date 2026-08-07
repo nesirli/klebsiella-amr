@@ -247,7 +247,11 @@ def main():
 
     train(model, tokenizer, train_lists, y_train, hp, class_weights)
 
-    torch.save({"head_state_dict": model.head.state_dict(), "genes": genes,
+    # Save the *full* fine-tuned model (encoder + head) so the tuned DNABERT-2
+    # weights are preserved for inference. This is ~450 MB per antibiotic because
+    # the base model is 117M parameters; the alternative is to save only the head
+    # and lose the fine-tuned encoder, which defeats the purpose of fine-tuning.
+    torch.save({"model_state_dict": model.state_dict(), "genes": genes,
                 "hyperparameters": hp, "base_model": BASE_MODEL,
                 "hidden_size": hidden_size}, args.model_output)
     json.dump({**base, "hyperparameters": hp,

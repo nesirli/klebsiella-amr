@@ -59,6 +59,7 @@ def parse_args():
     p.add_argument("--predictions-output", required=True)
     p.add_argument("--importance-output", required=True)
     p.add_argument("--shap-plot-output", required=True)
+    p.add_argument("--params-input", help="Optional JSON with hyperparameters to override defaults")
     return p.parse_args()
 
 
@@ -111,6 +112,13 @@ def main():
         "base_score": 0.5,
         "random_state": 42,
     }
+    if args.params_input:
+        with open(args.params_input) as f:
+            tuned = json.load(f)
+        # Scale pos weight is data-dependent; keep the computed value unless
+        # the tuning run explicitly provided one.
+        tuned.pop("scale_pos_weight", None)
+        hyperparams.update(tuned)
     model = XGBClassifier(**hyperparams)
     model.fit(x_train, y_train)
     model.get_booster().save_model(args.model_output)

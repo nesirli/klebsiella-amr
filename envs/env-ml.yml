@@ -24,3 +24,5 @@ dependencies:
   - pyyaml
   - pytest
   - pip
+  - pip:
+      - optuna

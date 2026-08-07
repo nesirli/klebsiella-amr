@@ -32,6 +32,13 @@ RUN_BIOINFO := conda run --no-capture-output -n bioinfo
 #   make metadata MAX_SAMPLES=-1   # full dataset
 MAX_SAMPLES := -1
 
+# Optuna hyperparameter search settings. Tuning is run on the training split
+# before final model training. Reduce trials for faster dev runs.
+TUNE_TRIALS_XGB := 30
+TUNE_TRIALS_LGB := 30
+TUNE_TRIALS_NN  := 20
+TUNE_SPLITS     := 3
+
 # Directories ------------------------------------------------------------------
 RESULTS_DIR     := results
 DATA_DIR        := data
@@ -242,6 +249,38 @@ $(SEQUENCES_DIR)/.done: $(patsubst %,$(CLEAN_DIR)/%_cleaned,$(SAMPLES)) results/
 $(SEQUENCES_DIR):
 	mkdir -p $@
 
+# Hyperparameter tuning (Optuna) -----------------------------------------------
+tune: $(foreach abx,$(ANTIBIOTICS),$(MODELS_DIR)/xgboost/tune_$(abx).json) \
+      $(foreach abx,$(ANTIBIOTICS),$(MODELS_DIR)/lightgbm/tune_$(abx).json) \
+      $(foreach abx,$(ANTIBIOTICS),$(MODELS_DIR)/nn/tune_$(abx).json)
+
+$(MODELS_DIR)/xgboost/tune_%.json: $(FEATURES_DIR)/train_features.csv scripts/tune_xgboost.py | $(MODELS_DIR)/xgboost
+	$(RUN_AMR) python3 scripts/tune_xgboost.py \
+		--train-features $(FEATURES_DIR)/train_features.csv \
+		--antibiotic $* \
+		--all-antibiotics $(ANTIBIOTICS) \
+		--n-trials $(TUNE_TRIALS_XGB) \
+		--n-splits $(TUNE_SPLITS) \
+		--output $@
+
+$(MODELS_DIR)/lightgbm/tune_%.json: $(FEATURES_DIR)/train_features.csv scripts/tune_lightgbm.py | $(MODELS_DIR)/lightgbm
+	$(RUN_AMR) python3 scripts/tune_lightgbm.py \
+		--train-features $(FEATURES_DIR)/train_features.csv \
+		--antibiotic $* \
+		--all-antibiotics $(ANTIBIOTICS) \
+		--n-trials $(TUNE_TRIALS_LGB) \
+		--n-splits $(TUNE_SPLITS) \
+		--output $@
+
+$(MODELS_DIR)/nn/tune_%.json: $(FEATURES_DIR)/train_features.csv scripts/tune_nn.py | $(MODELS_DIR)/nn
+	$(RUN_AMR) python3 scripts/tune_nn.py \
+		--train-features $(FEATURES_DIR)/train_features.csv \
+		--antibiotic $* \
+		--all-antibiotics $(ANTIBIOTICS) \
+		--n-trials $(TUNE_TRIALS_NN) \
+		--n-splits $(TUNE_SPLITS) \
+		--output $@
+
 # Models -----------------------------------------------------------------------
 models: $(MODELS_DIR)/.done
 
@@ -250,12 +289,13 @@ $(MODELS_DIR)/.done: $(foreach abx,$(ANTIBIOTICS),$(MODELS_DIR)/xgboost/$(abx)_m
                      $(foreach abx,$(ANTIBIOTICS),$(MODELS_DIR)/nn/$(abx)_metrics.json)
 	@touch $@
 
-$(MODELS_DIR)/xgboost/%_metrics.json: $(FEATURES_DIR)/train_features.csv $(FEATURES_DIR)/test_features.csv scripts/train_xgboost.py | $(MODELS_DIR)/xgboost
+$(MODELS_DIR)/xgboost/%_metrics.json: $(FEATURES_DIR)/train_features.csv $(FEATURES_DIR)/test_features.csv scripts/train_xgboost.py $(MODELS_DIR)/xgboost/tune_%.json | $(MODELS_DIR)/xgboost
 	$(RUN_AMR) python3 scripts/train_xgboost.py \
 		--train-features $(FEATURES_DIR)/train_features.csv \
 		--test-features $(FEATURES_DIR)/test_features.csv \
 		--antibiotic $* \
 		--all-antibiotics $(ANTIBIOTICS) \
+		--params-input $(MODELS_DIR)/xgboost/tune_$*.json \
 		--model-output $(MODELS_DIR)/xgboost/$*_model.json \
 		--params-output $(MODELS_DIR)/xgboost/$*_params.json \
 		--metrics-output $@ \
@@ -263,12 +303,13 @@ $(MODELS_DIR)/xgboost/%_metrics.json: $(FEATURES_DIR)/train_features.csv $(FEATU
 		--importance-output $(MODELS_DIR)/xgboost/$*_importance.csv \
 		--shap-plot-output $(MODELS_DIR)/xgboost/$*_shap.png
 
-$(MODELS_DIR)/lightgbm/%_metrics.json: $(FEATURES_DIR)/train_features.csv $(FEATURES_DIR)/test_features.csv scripts/train_lightgbm.py | $(MODELS_DIR)/lightgbm
+$(MODELS_DIR)/lightgbm/%_metrics.json: $(FEATURES_DIR)/train_features.csv $(FEATURES_DIR)/test_features.csv scripts/train_lightgbm.py $(MODELS_DIR)/lightgbm/tune_%.json | $(MODELS_DIR)/lightgbm
 	$(RUN_AMR) python3 scripts/train_lightgbm.py \
 		--train-features $(FEATURES_DIR)/train_features.csv \
 		--test-features $(FEATURES_DIR)/test_features.csv \
 		--antibiotic $* \
 		--all-antibiotics $(ANTIBIOTICS) \
+		--params-input $(MODELS_DIR)/lightgbm/tune_$*.json \
 		--model-output $(MODELS_DIR)/lightgbm/$*_model.txt \
 		--params-output $(MODELS_DIR)/lightgbm/$*_params.json \
 		--metrics-output $@ \
@@ -276,12 +317,13 @@ $(MODELS_DIR)/lightgbm/%_metrics.json: $(FEATURES_DIR)/train_features.csv $(FEAT
 		--importance-output $(MODELS_DIR)/lightgbm/$*_importance.csv \
 		--shap-plot-output $(MODELS_DIR)/lightgbm/$*_shap.png
 
-$(MODELS_DIR)/nn/%_metrics.json: $(FEATURES_DIR)/train_features.csv $(FEATURES_DIR)/test_features.csv scripts/train_nn.py | $(MODELS_DIR)/nn
+$(MODELS_DIR)/nn/%_metrics.json: $(FEATURES_DIR)/train_features.csv $(FEATURES_DIR)/test_features.csv scripts/train_nn.py $(MODELS_DIR)/nn/tune_%.json | $(MODELS_DIR)/nn
 	$(RUN_AMR) python3 scripts/train_nn.py \
 		--train-features $(FEATURES_DIR)/train_features.csv \
 		--test-features $(FEATURES_DIR)/test_features.csv \
 		--antibiotic $* \
 		--all-antibiotics $(ANTIBIOTICS) \
+		--params-input $(MODELS_DIR)/nn/tune_$*.json \
 		--model-output $(MODELS_DIR)/nn/$*_model.pt \
 		--params-output $(MODELS_DIR)/nn/$*_params.json \
 		--metrics-output $@ \
