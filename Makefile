@@ -43,6 +43,7 @@ DOWNSAMPLED_DIR := $(DATA_DIR)/downsampled
 ASSEMBLY_DIR    := $(DATA_DIR)/assembly
 QUAST_DIR       := $(DATA_DIR)/quast
 AMR_DIR         := $(DATA_DIR)/amr
+CLEAN_DIR       := $(DATA_DIR)/cleaned
 MULTIQC_DIR     := $(RESULTS_DIR)/multiqc
 FEATURES_DIR    := $(RESULTS_DIR)/features
 SEQUENCES_DIR   := $(RESULTS_DIR)/sequences
@@ -52,7 +53,7 @@ REPORT_DIR      := $(RESULTS_DIR)/report
 # Phony targets ----------------------------------------------------------------
 # These point to stamp files so that the underlying data files can be treated as
 # intermediates and removed automatically to save disk space.
-.PHONY: all setup test metadata qc kraken2 quast amr features sequences models dnabert report clean
+.PHONY: all setup test metadata models dnabert multiqc report clean
 
 all:
 	@if [ -z "$(SAMPLES)" ]; then \
@@ -125,8 +126,6 @@ $(KRAKEN_DB)/taxo.k2d:
 	tar -xzf $(KRAKEN_DB)/k2_standard_08gb_20250402.tar.gz -C $(KRAKEN_DB)
 	rm $(KRAKEN_DB)/k2_standard_08gb_20250402.tar.gz
 
-kraken2: $(KRAKEN_DIR)/.done
-
 $(KRAKEN_DIR)/.done: $(patsubst %,$(KRAKEN_DIR)/%_report.txt,$(SAMPLES)) | $(KRAKEN_DIR)
 	@touch $@
 
@@ -137,8 +136,6 @@ $(KRAKEN_DIR)/%_report.txt: $(TRIMMED_DIR)/%_1.fastq.gz $(TRIMMED_DIR)/%_2.fastq
 		$(TRIMMED_DIR)/$*_1.fastq.gz $(TRIMMED_DIR)/$*_2.fastq.gz
 
 # QUAST ------------------------------------------------------------------------
-quast: $(QUAST_DIR)/.done
-
 $(QUAST_DIR)/.done: $(patsubst %,$(QUAST_DIR)/%/report.tsv,$(SAMPLES)) | $(QUAST_DIR)
 	@touch $@
 
@@ -148,7 +145,7 @@ $(QUAST_DIR)/%/report.tsv: $(ASSEMBLY_DIR)/%_assembled.fasta | $(QUAST_DIR)
 		--threads $(QUAST_THREADS) \
 		$<
 
-$(TRIMMED_DIR) $(QC_DIR) $(KRAKEN_DIR) $(QUAST_DIR):
+$(TRIMMED_DIR) $(QC_DIR) $(KRAKEN_DIR) $(QUAST_DIR) $(CLEAN_DIR):
 	mkdir -p $@
 
 # Assembly ----------------------------------------------------------------------
@@ -178,8 +175,6 @@ $(DOWNSAMPLED_DIR) $(ASSEMBLY_DIR):
 	mkdir -p $@
 
 # AMRFinderPlus ----------------------------------------------------------------
-amr: $(AMR_DIR)/.done
-
 $(AMR_DIR)/.done: $(patsubst %,$(AMR_DIR)/%_amr.tsv,$(SAMPLES)) | $(AMR_DIR)
 	@touch $@
 
@@ -200,19 +195,26 @@ $(AMR_DIR)/%_amr.tsv $(AMR_DIR)/%_amr_genes.fna &: $(ASSEMBLY_DIR)/%_assembled.f
 $(AMR_DIR):
 	mkdir -p $@
 
-# QC aggregate -----------------------------------------------------------------
-qc: $(QC_DIR)/.done $(KRAKEN_DIR)/.done $(QUAST_DIR)/.done
+# Per-sample cleanup of large intermediates ------------------------------------
+# Once AMR, Kraken2, and QUAST are done for a sample, delete its big files
+# (raw reads, trimmed reads, downsampled reads, assembly) before moving on.
+# AMR/QC outputs are intentionally kept here; they are removed later once
+# features and the aggregated MultiQC report are built.
+$(CLEAN_DIR)/%_cleaned: $(AMR_DIR)/%_amr.tsv $(KRAKEN_DIR)/%_report.txt $(QUAST_DIR)/%/report.tsv | $(CLEAN_DIR)
+	rm -f $(READS_DIR)/$*_1.fastq.gz $(READS_DIR)/$*_2.fastq.gz \
+	      $(TRIMMED_DIR)/$*_1.fastq.gz $(TRIMMED_DIR)/$*_2.fastq.gz \
+	      $(DOWNSAMPLED_DIR)/$*_1.fastq.gz $(DOWNSAMPLED_DIR)/$*_2.fastq.gz \
+	      $(ASSEMBLY_DIR)/$*_assembled.fasta
+	@touch $@
 
 $(QC_DIR)/.done: $(patsubst %,$(QC_DIR)/%_fastp.json,$(SAMPLES)) | $(QC_DIR)
 	@touch $@
 
 # Features (tabular) -----------------------------------------------------------
-features: $(FEATURES_DIR)/.done
-
 $(FEATURES_DIR)/train_features.csv $(FEATURES_DIR)/test_features.csv: $(FEATURES_DIR)/.done
 	@true
 
-$(FEATURES_DIR)/.done: $(patsubst %,$(AMR_DIR)/%_amr.tsv,$(SAMPLES)) results/metadata/train.csv results/metadata/test.csv scripts/build_features.py | $(FEATURES_DIR)
+$(FEATURES_DIR)/.done: $(patsubst %,$(CLEAN_DIR)/%_cleaned,$(SAMPLES)) results/metadata/train.csv results/metadata/test.csv scripts/build_features.py | $(FEATURES_DIR)
 	$(RUN_AMR) python3 scripts/build_features.py \
 		--amr-files $(wildcard $(AMR_DIR)/*_amr.tsv) \
 		--train-metadata results/metadata/train.csv \
@@ -225,12 +227,10 @@ $(FEATURES_DIR):
 	mkdir -p $@
 
 # Sequences (for optional DNABERT-2) -------------------------------------------
-sequences: $(SEQUENCES_DIR)/.done
-
 $(SEQUENCES_DIR)/train_sequences.csv $(SEQUENCES_DIR)/test_sequences.csv: $(SEQUENCES_DIR)/.done
 	@true
 
-$(SEQUENCES_DIR)/.done: $(patsubst %,$(AMR_DIR)/%_amr_genes.fna,$(SAMPLES)) results/metadata/train.csv results/metadata/test.csv scripts/build_sequences.py | $(SEQUENCES_DIR)
+$(SEQUENCES_DIR)/.done: $(patsubst %,$(CLEAN_DIR)/%_cleaned,$(SAMPLES)) results/metadata/train.csv results/metadata/test.csv scripts/build_sequences.py | $(SEQUENCES_DIR)
 	$(RUN_AMR) python3 scripts/build_sequences.py \
 		--seq-files $(wildcard $(AMR_DIR)/*_amr_genes.fna) \
 		--train-metadata results/metadata/train.csv \
@@ -247,7 +247,7 @@ models: $(MODELS_DIR)/.done
 
 $(MODELS_DIR)/.done: $(foreach abx,$(ANTIBIOTICS),$(MODELS_DIR)/xgboost/$(abx)_metrics.json) \
                      $(foreach abx,$(ANTIBIOTICS),$(MODELS_DIR)/lightgbm/$(abx)_metrics.json) \
-                     $(foreach abx,$(ANTIBIOTICS),$(MODELS_DIR)/nn/$(abx)_metrics.json) | $(MODELS_DIR)
+                     $(foreach abx,$(ANTIBIOTICS),$(MODELS_DIR)/nn/$(abx)_metrics.json)
 	@touch $@
 
 $(MODELS_DIR)/xgboost/%_metrics.json: $(FEATURES_DIR)/train_features.csv $(FEATURES_DIR)/test_features.csv scripts/train_xgboost.py | $(MODELS_DIR)/xgboost
@@ -328,6 +328,9 @@ $(MULTIQC_DIR):
 
 # Report / interpretability summary --------------------------------------------
 report: $(REPORT_DIR)/summary.json $(MULTIQC_DIR)/multiqc_report.html
+	@# Final cleanup: keep only final report artifacts. Everything in data/ and
+	@# feature/sequence matrices are intermediates and can be huge for 1000+ samples.
+	rm -rf $(DATA_DIR) $(FEATURES_DIR) $(SEQUENCES_DIR)
 
 $(REPORT_DIR)/summary.json: $(MODELS_DIR)/.done scripts/summarize.py | $(REPORT_DIR)
 	$(RUN_AMR) python3 scripts/summarize.py \

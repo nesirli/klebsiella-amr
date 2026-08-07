@@ -53,26 +53,22 @@ Edit `config.yaml` to change:
 |--------|-------------|
 | `make setup` | Create the two conda environments |
 | `make metadata` | Parse metadata and create train/test splits |
-| `make qc` | Run fastp + Kraken2 + QUAST |
-| `make kraken2` | Run Kraken2 classification |
-| `make quast` | Run QUAST assembly statistics |
-| `make amr` | Run AMRFinderPlus |
-| `make features` | Build gene presence/absence matrix |
-| `make sequences` | Build sequence table for DNABERT-2 |
 | `make models` | Train XGBoost, LightGBM, and NN |
-| `make dnabert` | Train optional DNABERT-2 model |
+| `make dnabert` | Train optional DNABERT-2 model (run before `report`) |
 | `make multiqc` | Build single aggregated MultiQC report |
-| `make report` | `multiqc` + aggregated metrics and top features |
+| `make report` | `multiqc` + aggregated metrics; then delete all intermediates |
 | `make all` | `report` |
 | `make clean` | Remove generated results, data, and reference databases |
 
 ## Disk usage
 
-The pipeline is designed to delete large intermediate files (raw reads, trimmed reads, downsampled reads, assemblies) automatically after downstream steps finish. Small QC and AMR outputs are also removed once the aggregated MultiQC report and feature matrices are built.
+The pipeline deletes intermediate files as soon as they are no longer needed so it can scale to thousands of samples on a laptop.
 
+- **Per-sample cleanup**: as soon as AMRFinderPlus, Kraken2, and QUAST finish for a sample, its raw reads, trimmed reads, downsampled reads, and assembly are deleted.
+- **`make report` final cleanup**: once the MultiQC report and summary are ready, `make report` deletes everything in `data/` plus `results/features/` and `results/sequences/`.
 - **Reference databases** (~10 GB total) are downloaded once and kept in `reference/`.
-- **During a run** you need enough temporary space for reads and assemblies (roughly the size of the input FASTQs plus assembled contigs).
-- **After a run** only `results/` is kept: model files, predictions, importance tables, plots, `results/multiqc/multiqc_report.html`, and `results/report/summary.json`.
+- **During a run** you need enough temporary space for the samples currently in flight (roughly the size of their FASTQs plus assembled contigs), multiplied by the `-j` parallelism level.
+- **After `make report`** only `results/` is kept: model files, predictions, importance tables, plots, `results/multiqc/multiqc_report.html`, `results/report/summary.json`, and `results/metadata/`.
 
 ## Project structure
 
