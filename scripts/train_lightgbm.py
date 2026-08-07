@@ -90,16 +90,23 @@ def main():
 
     n_pos = int(y_train.sum())
     n_neg = int(len(y_train) - n_pos)
-    scale_pos_weight = (n_neg / n_pos) if n_pos else 1.0
 
     hyperparams = {
+        "objective": "binary",
+        "metric": "binary_logloss",
         "n_estimators": 200,
         "num_leaves": 15,
         "max_depth": 4,
         "learning_rate": 0.1,
         "subsample": 0.8,
         "colsample_bytree": 0.8,
-        "scale_pos_weight": scale_pos_weight,
+        "min_child_samples": 2,
+        "reg_alpha": 0.1,
+        "reg_lambda": 0.1,
+        # LightGBM's native imbalance handling: re-weights gradients so the
+        # minority class contributes equally to training. More stable than
+        # manual scale_pos_weight on tiny, skewed AMR splits.
+        "is_unbalance": True,
         "random_state": 42,
         "verbose": -1,
     }
