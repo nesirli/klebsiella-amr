@@ -6,16 +6,33 @@ import time
 import urllib.request
 
 
-def fetch_fastq_urls(run_accession):
+def fetch_fastq_urls(run_accession, retries=5, retry_delay=5):
     api_url = (
         "https://www.ebi.ac.uk/ena/portal/api/filereport"
         f"?accession={run_accession}&result=read_run&fields=fastq_ftp&format=tsv"
     )
-    with urllib.request.urlopen(api_url) as resp:
-        lines = resp.read().decode().strip().splitlines()
-    fastq_ftp = lines[1].split("\t")[1]
-    url1, url2 = fastq_ftp.split(";")
-    return f"https://{url1}", f"https://{url2}"
+    req = urllib.request.Request(
+        api_url,
+        headers={"User-Agent": "klebsiella-amr-pipeline/1.0"},
+    )
+    last_error = None
+    for attempt in range(1, retries + 1):
+        try:
+            with urllib.request.urlopen(req) as resp:
+                lines = resp.read().decode().strip().splitlines()
+            fastq_ftp = lines[1].split("\t")[1]
+            url1, url2 = fastq_ftp.split(";")
+            return f"https://{url1}", f"https://{url2}"
+        except Exception as e:
+            last_error = e
+            if attempt == retries:
+                break
+            print(
+                f"retry {attempt}/{retries} for ENA filereport {run_accession}: {e}",
+                file=sys.stderr,
+            )
+            time.sleep(retry_delay)
+    raise last_error
 
 
 def _remote_size(url):
