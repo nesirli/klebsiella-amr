@@ -1,7 +1,8 @@
-# Generated data and results
+# Generated data and reference databases
 data/
-results/
 reference/
+
+# Keep results/ unignored so final model files / reports can be pushed from a VPS
 
 # Conda / Python
 *.pyc
