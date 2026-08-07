@@ -26,6 +26,7 @@ def main():
         f"AMRFINDER_DB := {c['reference']['amrfinder_db']}",
         f"FASTP_THREADS := {c['resources']['fastp_threads']}",
         f"KRAKEN_THREADS := {c['resources']['kraken2_threads']}",
+        f"QUAST_THREADS := {c['resources']['quast_threads']}",
         f"SPADES_THREADS := {c['resources']['spades_threads']}",
         f"SPADES_MEMORY := {c['resources']['spades_memory']}",
         f"AMRFINDER_THREADS := {c['resources']['amrfinder_threads']}",

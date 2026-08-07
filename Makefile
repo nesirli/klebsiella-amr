@@ -7,8 +7,8 @@ ifeq ($(findstring .,$(MAKE_VERSION)),)
   $(error This Makefile requires GNU Make. On macOS: brew install make && gmake)
 endif
 
-# Preserve intermediate files (reads, trimmed, assemblies, etc.)
-.SECONDARY:
+# Delete partial outputs if a recipe fails, so incomplete files are not kept.
+.DELETE_ON_ERROR:
 
 # Auto-generated includes ------------------------------------------------------
 # Only include generated config if the amr environment exists; otherwise
@@ -17,7 +17,9 @@ CONDA_BASE := $(shell conda info --base 2>/dev/null)
 AMR_ENV := $(wildcard $(CONDA_BASE)/envs/amr)
 ifneq ($(AMR_ENV),)
   -include results/metadata/config.mk
-  -include results/metadata/samples.mk
+  ifneq ($(wildcard results/metadata/samples.mk),)
+    include results/metadata/samples.mk
+  endif
 endif
 
 # Conda runners ----------------------------------------------------------------
@@ -31,24 +33,26 @@ RUN_BIOINFO := conda run --no-capture-output -n bioinfo
 MAX_SAMPLES := -1
 
 # Directories ------------------------------------------------------------------
-RESULTS_DIR        := results
-DATA_DIR           := data
-READS_DIR          := $(DATA_DIR)/reads
-TRIMMED_DIR        := $(DATA_DIR)/trimmed
-QC_DIR             := $(DATA_DIR)/qc
-KRAKEN_DIR         := $(DATA_DIR)/kraken2
-DOWNSAMPLED_DIR    := $(DATA_DIR)/downsampled
-ASSEMBLY_DIR       := $(DATA_DIR)/assembly
-ASSEMBLY_STATS_DIR := $(DATA_DIR)/assembly_stats
-AMR_DIR            := $(DATA_DIR)/amr
-MULTIQC_DIR        := $(RESULTS_DIR)/multiqc
-FEATURES_DIR       := $(RESULTS_DIR)/features
-SEQUENCES_DIR      := $(RESULTS_DIR)/sequences
-MODELS_DIR         := $(RESULTS_DIR)/models
-REPORT_DIR         := $(RESULTS_DIR)/report
+RESULTS_DIR     := results
+DATA_DIR        := data
+READS_DIR       := $(DATA_DIR)/reads
+TRIMMED_DIR     := $(DATA_DIR)/trimmed
+QC_DIR          := $(DATA_DIR)/qc
+KRAKEN_DIR      := $(DATA_DIR)/kraken2
+DOWNSAMPLED_DIR := $(DATA_DIR)/downsampled
+ASSEMBLY_DIR    := $(DATA_DIR)/assembly
+QUAST_DIR       := $(DATA_DIR)/quast
+AMR_DIR         := $(DATA_DIR)/amr
+MULTIQC_DIR     := $(RESULTS_DIR)/multiqc
+FEATURES_DIR    := $(RESULTS_DIR)/features
+SEQUENCES_DIR   := $(RESULTS_DIR)/sequences
+MODELS_DIR      := $(RESULTS_DIR)/models
+REPORT_DIR      := $(RESULTS_DIR)/report
 
 # Phony targets ----------------------------------------------------------------
-.PHONY: all setup test metadata reads qc kraken2 assembly amr features sequences models dnabert report clean
+# These point to stamp files so that the underlying data files can be treated as
+# intermediates and removed automatically to save disk space.
+.PHONY: all setup test metadata qc kraken2 quast amr features sequences models dnabert report clean
 
 all:
 	@if [ -z "$(SAMPLES)" ]; then \
@@ -85,7 +89,8 @@ results/metadata/.done: config.yaml scripts/metadata.py results/metadata/config.
 	touch $@
 
 # Reads ------------------------------------------------------------------------
-reads: $(patsubst %,$(READS_DIR)/%_1.fastq.gz,$(SAMPLES))
+$(READS_DIR)/.done: $(patsubst %,$(READS_DIR)/%_1.fastq.gz,$(SAMPLES)) | $(READS_DIR)
+	@touch $@
 
 $(READS_DIR)/%_1.fastq.gz $(READS_DIR)/%_2.fastq.gz &: scripts/download_reads.py | $(READS_DIR)
 	$(RUN_AMR) python3 scripts/download_reads.py \
@@ -96,8 +101,9 @@ $(READS_DIR)/%_1.fastq.gz $(READS_DIR)/%_2.fastq.gz &: scripts/download_reads.py
 $(READS_DIR):
 	mkdir -p $@
 
-# QC (fastp + MultiQC) ---------------------------------------------------------
-qc: $(patsubst %,$(QC_DIR)/%_fastp.json,$(SAMPLES)) $(MULTIQC_DIR)/fastp_multiqc_report.html
+# Trimming / fastp -------------------------------------------------------------
+$(TRIMMED_DIR)/.done: $(patsubst %,$(QC_DIR)/%_fastp.json,$(SAMPLES)) | $(TRIMMED_DIR)
+	@touch $@
 
 $(TRIMMED_DIR)/%_1.fastq.gz $(TRIMMED_DIR)/%_2.fastq.gz $(QC_DIR)/%_fastp.json &: $(READS_DIR)/%_1.fastq.gz $(READS_DIR)/%_2.fastq.gz | $(TRIMMED_DIR) $(QC_DIR)
 	$(RUN_BIOINFO) fastp \
@@ -111,15 +117,7 @@ $(TRIMMED_DIR)/%_1.fastq.gz $(TRIMMED_DIR)/%_2.fastq.gz $(QC_DIR)/%_fastp.json &
 		--length_required 50 \
 		--thread $(FASTP_THREADS)
 
-$(MULTIQC_DIR)/fastp_multiqc_report.html: $(patsubst %,$(QC_DIR)/%_fastp.json,$(SAMPLES)) | $(MULTIQC_DIR)
-	$(RUN_BIOINFO) multiqc $(QC_DIR) --outdir $(MULTIQC_DIR) --filename fastp_multiqc_report.html --force
-
-$(TRIMMED_DIR) $(QC_DIR) $(MULTIQC_DIR):
-	mkdir -p $@
-
-# Kraken2 contamination screening (optional, requires ~8 GB database) ----------
-kraken2: $(patsubst %,$(KRAKEN_DIR)/%_report.txt,$(SAMPLES))
-
+# Kraken2 ----------------------------------------------------------------------
 $(KRAKEN_DB)/taxo.k2d:
 	mkdir -p $(KRAKEN_DB)
 	curl -L -o $(KRAKEN_DB)/k2_standard_08gb_20250402.tar.gz \
@@ -127,23 +125,43 @@ $(KRAKEN_DB)/taxo.k2d:
 	tar -xzf $(KRAKEN_DB)/k2_standard_08gb_20250402.tar.gz -C $(KRAKEN_DB)
 	rm $(KRAKEN_DB)/k2_standard_08gb_20250402.tar.gz
 
+kraken2: $(KRAKEN_DIR)/.done
+
+$(KRAKEN_DIR)/.done: $(patsubst %,$(KRAKEN_DIR)/%_report.txt,$(SAMPLES)) | $(KRAKEN_DIR)
+	@touch $@
+
 $(KRAKEN_DIR)/%_report.txt: $(TRIMMED_DIR)/%_1.fastq.gz $(TRIMMED_DIR)/%_2.fastq.gz $(KRAKEN_DB)/taxo.k2d | $(KRAKEN_DIR)
 	$(RUN_BIOINFO) kraken2 --db $(KRAKEN_DB) \
 		--paired --gzip-compressed \
 		--report $@ --output /dev/null \
 		$(TRIMMED_DIR)/$*_1.fastq.gz $(TRIMMED_DIR)/$*_2.fastq.gz
 
-$(KRAKEN_DIR):
+# QUAST ------------------------------------------------------------------------
+quast: $(QUAST_DIR)/.done
+
+$(QUAST_DIR)/.done: $(patsubst %,$(QUAST_DIR)/%/report.tsv,$(SAMPLES)) | $(QUAST_DIR)
+	@touch $@
+
+$(QUAST_DIR)/%/report.tsv: $(ASSEMBLY_DIR)/%_assembled.fasta | $(QUAST_DIR)
+	$(RUN_BIOINFO) quast.py \
+		--output-dir $(QUAST_DIR)/$* \
+		--threads $(QUAST_THREADS) \
+		$<
+
+$(TRIMMED_DIR) $(QC_DIR) $(KRAKEN_DIR) $(QUAST_DIR):
 	mkdir -p $@
 
 # Assembly ----------------------------------------------------------------------
-assembly: $(patsubst %,$(ASSEMBLY_DIR)/%_assembled.fasta,$(SAMPLES)) \
-          $(patsubst %,$(ASSEMBLY_STATS_DIR)/%_stats.tsv,$(SAMPLES))
+$(DOWNSAMPLED_DIR)/.done: $(patsubst %,$(DOWNSAMPLED_DIR)/%_1.fastq.gz,$(SAMPLES)) | $(DOWNSAMPLED_DIR)
+	@touch $@
 
 $(DOWNSAMPLED_DIR)/%_1.fastq.gz $(DOWNSAMPLED_DIR)/%_2.fastq.gz &: $(TRIMMED_DIR)/%_1.fastq.gz $(TRIMMED_DIR)/%_2.fastq.gz $(QC_DIR)/%_fastp.json | $(DOWNSAMPLED_DIR)
 	fraction=$$($(RUN_AMR) python3 -c "import json; d=json.load(open('$(QC_DIR)/$*_fastp.json')); cov=d['summary']['after_filtering']['total_bases']/$(GENOME_SIZE); print(min(0.999999, $(TARGET_COVERAGE)/cov))"); \
 	$(RUN_BIOINFO) seqtk sample -s42 $(TRIMMED_DIR)/$*_1.fastq.gz $$fraction | gzip > $(DOWNSAMPLED_DIR)/$*_1.fastq.gz; \
 	$(RUN_BIOINFO) seqtk sample -s42 $(TRIMMED_DIR)/$*_2.fastq.gz $$fraction | gzip > $(DOWNSAMPLED_DIR)/$*_2.fastq.gz
+
+$(ASSEMBLY_DIR)/.done: $(patsubst %,$(ASSEMBLY_DIR)/%_assembled.fasta,$(SAMPLES)) | $(ASSEMBLY_DIR)
+	@touch $@
 
 $(ASSEMBLY_DIR)/%_assembled.fasta: $(DOWNSAMPLED_DIR)/%_1.fastq.gz $(DOWNSAMPLED_DIR)/%_2.fastq.gz | $(ASSEMBLY_DIR)
 	$(RUN_BIOINFO) spades.py \
@@ -156,14 +174,14 @@ $(ASSEMBLY_DIR)/%_assembled.fasta: $(DOWNSAMPLED_DIR)/%_1.fastq.gz $(DOWNSAMPLED
 	mv $(ASSEMBLY_DIR)/$*_tmp/contigs.fasta $@
 	rm -rf $(ASSEMBLY_DIR)/$*_tmp
 
-$(ASSEMBLY_STATS_DIR)/%_stats.tsv: $(ASSEMBLY_DIR)/%_assembled.fasta | $(ASSEMBLY_STATS_DIR)
-	$(RUN_AMR) python3 scripts/assembly_stats.py --assembly $< --output $@
-
-$(DOWNSAMPLED_DIR) $(ASSEMBLY_DIR) $(ASSEMBLY_STATS_DIR):
+$(DOWNSAMPLED_DIR) $(ASSEMBLY_DIR):
 	mkdir -p $@
 
 # AMRFinderPlus ----------------------------------------------------------------
-amr: $(patsubst %,$(AMR_DIR)/%_amr.tsv,$(SAMPLES))
+amr: $(AMR_DIR)/.done
+
+$(AMR_DIR)/.done: $(patsubst %,$(AMR_DIR)/%_amr.tsv,$(SAMPLES)) | $(AMR_DIR)
+	@touch $@
 
 $(AMRFINDER_DB)/latest/AMR.LIB:
 	mkdir -p $(AMRFINDER_DB)
@@ -181,6 +199,12 @@ $(AMR_DIR)/%_amr.tsv $(AMR_DIR)/%_amr_genes.fna &: $(ASSEMBLY_DIR)/%_assembled.f
 
 $(AMR_DIR):
 	mkdir -p $@
+
+# QC aggregate -----------------------------------------------------------------
+qc: $(QC_DIR)/.done $(KRAKEN_DIR)/.done $(QUAST_DIR)/.done
+
+$(QC_DIR)/.done: $(patsubst %,$(QC_DIR)/%_fastp.json,$(SAMPLES)) | $(QC_DIR)
+	@touch $@
 
 # Features (tabular) -----------------------------------------------------------
 features: $(FEATURES_DIR)/.done
@@ -219,9 +243,12 @@ $(SEQUENCES_DIR):
 	mkdir -p $@
 
 # Models -----------------------------------------------------------------------
-models: $(foreach abx,$(ANTIBIOTICS),$(MODELS_DIR)/xgboost/$(abx)_metrics.json) \
-        $(foreach abx,$(ANTIBIOTICS),$(MODELS_DIR)/lightgbm/$(abx)_metrics.json) \
-        $(foreach abx,$(ANTIBIOTICS),$(MODELS_DIR)/nn/$(abx)_metrics.json)
+models: $(MODELS_DIR)/.done
+
+$(MODELS_DIR)/.done: $(foreach abx,$(ANTIBIOTICS),$(MODELS_DIR)/xgboost/$(abx)_metrics.json) \
+                     $(foreach abx,$(ANTIBIOTICS),$(MODELS_DIR)/lightgbm/$(abx)_metrics.json) \
+                     $(foreach abx,$(ANTIBIOTICS),$(MODELS_DIR)/nn/$(abx)_metrics.json) | $(MODELS_DIR)
+	@touch $@
 
 $(MODELS_DIR)/xgboost/%_metrics.json: $(FEATURES_DIR)/train_features.csv $(FEATURES_DIR)/test_features.csv scripts/train_xgboost.py | $(MODELS_DIR)/xgboost
 	$(RUN_AMR) python3 scripts/train_xgboost.py \
@@ -266,7 +293,10 @@ $(MODELS_DIR)/xgboost $(MODELS_DIR)/lightgbm $(MODELS_DIR)/nn:
 	mkdir -p $@
 
 # DNABERT-2 (optional) ---------------------------------------------------------
-dnabert: $(foreach abx,$(ANTIBIOTICS),$(MODELS_DIR)/dnabert/$(abx)_metrics.json)
+dnabert: $(MODELS_DIR)/dnabert/.done
+
+$(MODELS_DIR)/dnabert/.done: $(foreach abx,$(ANTIBIOTICS),$(MODELS_DIR)/dnabert/$(abx)_metrics.json) | $(MODELS_DIR)/dnabert
+	@touch $@
 
 $(MODELS_DIR)/dnabert/%_metrics.json: $(SEQUENCES_DIR)/train_sequences.csv $(SEQUENCES_DIR)/test_sequences.csv scripts/train_dnabert.py | $(MODELS_DIR)/dnabert
 	$(RUN_AMR) python3 scripts/train_dnabert.py \
@@ -284,10 +314,22 @@ $(MODELS_DIR)/dnabert/%_metrics.json: $(SEQUENCES_DIR)/train_sequences.csv $(SEQ
 $(MODELS_DIR)/dnabert:
 	mkdir -p $@
 
-# Report / interpretability summary --------------------------------------------
-report: $(REPORT_DIR)/summary.json
+# MultiQC: aggregate fastp + kraken2 + quast -----------------------------------
+multiqc: $(MULTIQC_DIR)/multiqc_report.html
 
-$(REPORT_DIR)/summary.json: models scripts/summarize.py | $(REPORT_DIR)
+$(MULTIQC_DIR)/multiqc_report.html: $(QC_DIR)/.done $(KRAKEN_DIR)/.done $(QUAST_DIR)/.done | $(MULTIQC_DIR)
+	$(RUN_BIOINFO) multiqc $(QC_DIR) $(KRAKEN_DIR) $(QUAST_DIR) \
+		--outdir $(MULTIQC_DIR) \
+		--filename multiqc_report.html \
+		--force
+
+$(MULTIQC_DIR):
+	mkdir -p $@
+
+# Report / interpretability summary --------------------------------------------
+report: $(REPORT_DIR)/summary.json $(MULTIQC_DIR)/multiqc_report.html
+
+$(REPORT_DIR)/summary.json: $(MODELS_DIR)/.done scripts/summarize.py | $(REPORT_DIR)
 	$(RUN_AMR) python3 scripts/summarize.py \
 		--models-dir $(MODELS_DIR) \
 		--antibiotics $(ANTIBIOTICS) \
