@@ -1,0 +1,16 @@
+METADATA := metadata.csv
+DELIMITER := ;
+ANTIBIOTICS := amikacin ciprofloxacin ceftazidime meropenem
+TRAIN_CUTOFF := 2022
+TEST_YEARS := 2023 2024
+GENOME_SIZE := 5500000
+TARGET_COVERAGE := 100
+KRAKEN_DB := reference/kraken2_db
+AMRFINDER_DB := reference/amrfinderplus
+FASTP_THREADS := 4
+KRAKEN_THREADS := 4
+QUAST_THREADS := 4
+SPADES_THREADS := 8
+SPADES_MEMORY := 16
+AMRFINDER_THREADS := 4
+DOWNLOAD_JOBS := 4

@@ -1,0 +1,11 @@
+{
+  "model": "nn",
+  "antibiotic": "meropenem",
+  "n_train": 40,
+  "n_test": 47,
+  "n_features": 172,
+  "accuracy": 0.9148936170212766,
+  "balanced_accuracy": 0.4777777777777778,
+  "f1": 0.0,
+  "roc_auc": 0.41111111111111115
+}

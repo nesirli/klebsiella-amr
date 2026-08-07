@@ -1,0 +1,11 @@
+{
+  "model": "lightgbm",
+  "antibiotic": "meropenem",
+  "n_train": 40,
+  "n_test": 47,
+  "n_features": 172,
+  "accuracy": 0.9574468085106383,
+  "balanced_accuracy": 0.5,
+  "f1": 0.0,
+  "roc_auc": 0.5
+}

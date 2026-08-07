@@ -1,0 +1,123 @@
+{
+  "models": [
+    "xgboost",
+    "lightgbm",
+    "nn"
+  ],
+  "antibiotics": [
+    "amikacin",
+    "ciprofloxacin",
+    "ceftazidime",
+    "meropenem"
+  ],
+  "metrics": [
+    {
+      "model": "xgboost",
+      "antibiotic": "amikacin",
+      "n_train": 44,
+      "n_test": 50,
+      "f1": 0.0,
+      "balanced_accuracy": 0.42857142857142855,
+      "roc_auc": 0.8367346938775511
+    },
+    {
+      "model": "xgboost",
+      "antibiotic": "ciprofloxacin",
+      "n_train": 41,
+      "n_test": 45,
+      "f1": 0.7719298245614035,
+      "balanced_accuracy": 0.7,
+      "roc_auc": 0.7933333333333333
+    },
+    {
+      "model": "xgboost",
+      "antibiotic": "ceftazidime",
+      "n_train": 49,
+      "n_test": 39,
+      "f1": 0.6666666666666666,
+      "balanced_accuracy": 0.5231481481481481,
+      "roc_auc": 0.5740740740740741
+    },
+    {
+      "model": "xgboost",
+      "antibiotic": "meropenem",
+      "n_train": 40,
+      "n_test": 47,
+      "f1": 0.25,
+      "balanced_accuracy": 0.6944444444444444,
+      "roc_auc": 0.7666666666666666
+    },
+    {
+      "model": "lightgbm",
+      "antibiotic": "amikacin",
+      "n_train": 44,
+      "n_test": 50,
+      "f1": 0.0,
+      "balanced_accuracy": 0.1836734693877551,
+      "roc_auc": 0.04081632653061229
+    },
+    {
+      "model": "lightgbm",
+      "antibiotic": "ciprofloxacin",
+      "n_train": 41,
+      "n_test": 45,
+      "f1": 0.8,
+      "balanced_accuracy": 0.5,
+      "roc_auc": 0.5
+    },
+    {
+      "model": "lightgbm",
+      "antibiotic": "ceftazidime",
+      "n_train": 49,
+      "n_test": 39,
+      "f1": 0.6538461538461539,
+      "balanced_accuracy": 0.4814814814814815,
+      "roc_auc": 0.4814814814814815
+    },
+    {
+      "model": "lightgbm",
+      "antibiotic": "meropenem",
+      "n_train": 40,
+      "n_test": 47,
+      "f1": 0.0,
+      "balanced_accuracy": 0.5,
+      "roc_auc": 0.5
+    },
+    {
+      "model": "nn",
+      "antibiotic": "amikacin",
+      "n_train": 44,
+      "n_test": 50,
+      "f1": 0.0,
+      "balanced_accuracy": 0.46938775510204084,
+      "roc_auc": 0.34693877551020413
+    },
+    {
+      "model": "nn",
+      "antibiotic": "ciprofloxacin",
+      "n_train": 41,
+      "n_test": 45,
+      "f1": 0.8888888888888888,
+      "balanced_accuracy": 0.8,
+      "roc_auc": 0.8999999999999999
+    },
+    {
+      "model": "nn",
+      "antibiotic": "ceftazidime",
+      "n_train": 49,
+      "n_test": 39,
+      "f1": 0.7037037037037037,
+      "balanced_accuracy": 0.5185185185185185,
+      "roc_auc": 0.5200617283950617
+    },
+    {
+      "model": "nn",
+      "antibiotic": "meropenem",
+      "n_train": 40,
+      "n_test": 47,
+      "f1": 0.0,
+      "balanced_accuracy": 0.4777777777777778,
+      "roc_auc": 0.41111111111111115
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "model": "lightgbm",
+  "antibiotic": "ceftazidime",
+  "n_train": 49,
+  "n_test": 39,
+  "n_features": 172,
+  "hyperparameters": {
+    "n_estimators": 200,
+    "num_leaves": 15,
+    "max_depth": 4,
+    "learning_rate": 0.1,
+    "subsample": 0.8,
+    "colsample_bytree": 0.8,
+    "scale_pos_weight": 0.2564102564102564,
+    "random_state": 42,
+    "verbose": -1
+  },
+  "train_class_balance": {
+    "R": 39,
+    "S": 10
+  }
+}

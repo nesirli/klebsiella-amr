@@ -1,0 +1,11 @@
+{
+  "model": "lightgbm",
+  "antibiotic": "amikacin",
+  "n_train": 44,
+  "n_test": 50,
+  "n_features": 172,
+  "accuracy": 0.36,
+  "balanced_accuracy": 0.1836734693877551,
+  "f1": 0.0,
+  "roc_auc": 0.04081632653061229
+}

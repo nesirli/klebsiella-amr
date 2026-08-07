@@ -1,0 +1,22 @@
+{
+  "model": "nn",
+  "antibiotic": "amikacin",
+  "n_train": 44,
+  "n_test": 50,
+  "n_features": 172,
+  "hyperparameters": {
+    "epochs": 200,
+    "batch_size": 32,
+    "learning_rate": 0.001,
+    "hidden": [
+      128,
+      64
+    ],
+    "dropout": 0.3,
+    "weight_decay": 0.0001
+  },
+  "train_class_balance": {
+    "R": 17,
+    "S": 27
+  }
+}

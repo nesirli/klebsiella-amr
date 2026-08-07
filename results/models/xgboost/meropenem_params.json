@@ -1,0 +1,22 @@
+{
+  "model": "xgboost",
+  "antibiotic": "meropenem",
+  "n_train": 40,
+  "n_test": 47,
+  "n_features": 172,
+  "hyperparameters": {
+    "n_estimators": 200,
+    "max_depth": 4,
+    "learning_rate": 0.1,
+    "subsample": 0.8,
+    "colsample_bytree": 0.8,
+    "scale_pos_weight": 1.5,
+    "base_score": 0.5,
+    "eval_metric": "logloss",
+    "random_state": 42
+  },
+  "train_class_balance": {
+    "R": 16,
+    "S": 24
+  }
+}

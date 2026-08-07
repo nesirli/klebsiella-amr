@@ -1,0 +1,11 @@
+{
+  "model": "lightgbm",
+  "antibiotic": "ceftazidime",
+  "n_train": 49,
+  "n_test": 39,
+  "n_features": 172,
+  "accuracy": 0.5384615384615384,
+  "balanced_accuracy": 0.4814814814814815,
+  "f1": 0.6538461538461539,
+  "roc_auc": 0.4814814814814815
+}

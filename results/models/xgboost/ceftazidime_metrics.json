@@ -1,0 +1,11 @@
+{
+  "model": "xgboost",
+  "antibiotic": "ceftazidime",
+  "n_train": 49,
+  "n_test": 39,
+  "n_features": 172,
+  "accuracy": 0.5641025641025641,
+  "balanced_accuracy": 0.5231481481481481,
+  "f1": 0.6666666666666666,
+  "roc_auc": 0.5740740740740741
+}

@@ -1,0 +1,11 @@
+{
+  "model": "nn",
+  "antibiotic": "ceftazidime",
+  "n_train": 49,
+  "n_test": 39,
+  "n_features": 172,
+  "accuracy": 0.5897435897435898,
+  "balanced_accuracy": 0.5185185185185185,
+  "f1": 0.7037037037037037,
+  "roc_auc": 0.5200617283950617
+}

@@ -1,0 +1,11 @@
+{
+  "model": "xgboost",
+  "antibiotic": "amikacin",
+  "n_train": 44,
+  "n_test": 50,
+  "n_features": 172,
+  "accuracy": 0.84,
+  "balanced_accuracy": 0.42857142857142855,
+  "f1": 0.0,
+  "roc_auc": 0.8367346938775511
+}
