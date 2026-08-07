@@ -25,9 +25,14 @@ def main():
                 "antibiotic": abx,
                 "n_train": data.get("n_train"),
                 "n_test": data.get("n_test"),
-                "f1": data.get("f1"),
+                "accuracy": data.get("accuracy"),
                 "balanced_accuracy": data.get("balanced_accuracy"),
+                "f1": data.get("f1"),
+                "precision": data.get("precision"),
+                "recall": data.get("recall"),
                 "roc_auc": data.get("roc_auc"),
+                "pr_auc": data.get("pr_auc"),
+                "confusion_matrix": data.get("confusion_matrix"),
             })
 
     summary = {

@@ -59,7 +59,8 @@ def _run_model(script, model_output_ext, extra_args, abx, train, test, out_dir):
         check=True,
     )
     metrics = json.load(open(out_dir / f"{abx}_metrics.json"))
-    assert "f1" in metrics
+    for key in ("f1", "precision", "recall", "pr_auc", "confusion_matrix"):
+        assert key in metrics
     return metrics
 
 

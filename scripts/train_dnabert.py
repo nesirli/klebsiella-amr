@@ -44,8 +44,12 @@ import torch
 import torch.nn as nn
 from sklearn.metrics import (
     accuracy_score,
+    average_precision_score,
     balanced_accuracy_score,
+    confusion_matrix,
     f1_score,
+    precision_score,
+    recall_score,
     roc_auc_score,
 )
 from transformers import AutoModel, AutoTokenizer
@@ -265,11 +269,17 @@ def main():
     y_proba = proba_from_pooled(model, pooled)
     y_pred = (y_proba >= 0.5).astype(int)
 
+    cm = confusion_matrix(y_test, y_pred, labels=[0, 1])
+    tn, fp, fn, tp = cm.ravel()
     metrics = {**base,
                "accuracy": accuracy_score(y_test, y_pred),
                "balanced_accuracy": balanced_accuracy_score(y_test, y_pred),
                "f1": f1_score(y_test, y_pred, zero_division=0),
-               "roc_auc": roc_auc_score(y_test, y_proba) if len(np.unique(y_test)) > 1 else None}
+               "precision": precision_score(y_test, y_pred, zero_division=0),
+               "recall": recall_score(y_test, y_pred, zero_division=0),
+               "roc_auc": roc_auc_score(y_test, y_proba) if len(np.unique(y_test)) > 1 else None,
+               "pr_auc": average_precision_score(y_test, y_proba) if len(np.unique(y_test)) > 1 else None,
+               "confusion_matrix": {"tn": int(tn), "fp": int(fp), "fn": int(fn), "tp": int(tp)}}
     json.dump(metrics, open(args.metrics_output, "w"), indent=2)
     pd.DataFrame({"run": test_df["run"], "actual": y_test,
                   "predicted": y_pred, "probability_resistant": y_proba}
