@@ -12,3 +12,4 @@ __pycache__/
 
 # OS
 .DS_Store
+results/multiqc/multiqc_report_data/

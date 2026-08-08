@@ -1,0 +1,14 @@
+{
+  "n_estimators": 177,
+  "max_depth": 3,
+  "learning_rate": 0.022096526145513846,
+  "subsample": 0.5704621124873813,
+  "colsample_bytree": 0.9010984903770198,
+  "min_child_weight": 1,
+  "max_delta_step": 10,
+  "reg_alpha": 0.08916674715636537,
+  "reg_lambda": 6.143857495033091e-07,
+  "n_trials": 30,
+  "n_splits": 3,
+  "best_cv_roc_auc": 0.5555555555555555
+}

@@ -4,8 +4,17 @@
   "n_train": 44,
   "n_test": 50,
   "n_features": 172,
-  "accuracy": 0.36,
-  "balanced_accuracy": 0.1836734693877551,
+  "accuracy": 0.92,
+  "balanced_accuracy": 0.46938775510204084,
   "f1": 0.0,
-  "roc_auc": 0.04081632653061229
+  "precision": 0.0,
+  "recall": 0.0,
+  "roc_auc": 0.8571428571428572,
+  "pr_auc": 0.125,
+  "confusion_matrix": {
+    "tn": 46,
+    "fp": 3,
+    "fn": 1,
+    "tp": 0
+  }
 }

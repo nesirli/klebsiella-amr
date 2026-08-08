@@ -5,15 +5,26 @@
   "n_test": 39,
   "n_features": 172,
   "hyperparameters": {
-    "n_estimators": 200,
-    "max_depth": 4,
-    "learning_rate": 0.1,
-    "subsample": 0.8,
-    "colsample_bytree": 0.8,
+    "objective": "binary:logistic",
+    "eval_metric": [
+      "logloss",
+      "auc"
+    ],
+    "n_estimators": 132,
+    "max_depth": 7,
+    "learning_rate": 0.0049738116352313335,
+    "subsample": 0.9996812193207756,
+    "colsample_bytree": 0.8036446944059376,
+    "min_child_weight": 1,
+    "max_delta_step": 8,
+    "reg_alpha": 1.2899915391277795e-07,
+    "reg_lambda": 0.014775475739688154,
     "scale_pos_weight": 0.2564102564102564,
     "base_score": 0.5,
-    "eval_metric": "logloss",
-    "random_state": 42
+    "random_state": 42,
+    "n_trials": 30,
+    "n_splits": 3,
+    "best_cv_roc_auc": 0.888888888888889
   },
   "train_class_balance": {
     "R": 39,

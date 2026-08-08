@@ -5,15 +5,20 @@
   "n_test": 47,
   "n_features": 172,
   "hyperparameters": {
-    "epochs": 200,
-    "batch_size": 32,
-    "learning_rate": 0.001,
+    "epochs": 97,
+    "batch_size": 8,
+    "learning_rate": 0.00020511104188433984,
     "hidden": [
       128,
       64
     ],
-    "dropout": 0.3,
-    "weight_decay": 0.0001
+    "dropout": 0.5330880728874676,
+    "weight_decay": 1.493656855461763e-06,
+    "hidden0": 111,
+    "hidden1": 69,
+    "n_trials": 20,
+    "n_splits": 3,
+    "best_cv_roc_auc": 0.9291666666666667
   },
   "train_class_balance": {
     "R": 16,
