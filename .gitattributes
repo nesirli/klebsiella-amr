@@ -1,0 +1,3 @@
+# Mark HTML files as generated so GitHub Linguist ignores them in language stats.
+# This keeps the repository classified as Python despite large MultiQC reports.
+*.html linguist-generated=true
