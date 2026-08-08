@@ -9,6 +9,7 @@ import argparse
 import os
 import sys
 import time
+import urllib.error
 import urllib.request
 from pathlib import Path
 
@@ -94,13 +95,15 @@ def _remote_size(url):
 
 def download(url, dest, retries=MAX_RETRIES, retry_delay=RETRY_DELAY):
     """Resume-aware download of a single URL to dest."""
-    for attempt in range(1, retries + 1):
+    attempt = 0
+    while attempt < retries:
+        attempt += 1
         try:
             existing = os.path.getsize(dest) if os.path.exists(dest) else 0
             remote = _remote_size(url)
 
-            if existing == remote and remote > 0:
-                print(f"{dest}: already complete ({remote} bytes)")
+            if existing >= remote > 0:
+                print(f"{dest}: already complete ({existing} bytes)")
                 return
 
             req = urllib.request.Request(url)
@@ -116,9 +119,25 @@ def download(url, dest, retries=MAX_RETRIES, retry_delay=RETRY_DELAY):
                         f.write(chunk)
 
             actual = os.path.getsize(dest)
-            if actual != remote:
+            if remote > 0 and actual != remote:
                 raise IOError(f"incomplete download: got {actual} of {remote} bytes")
             return
+        except urllib.error.HTTPError as e:
+            if e.code == 416:
+                # Local file is already complete or larger than remote; start over.
+                print(f"{dest}: range not satisfiable, restarting download", file=sys.stderr)
+                try:
+                    os.remove(dest)
+                except FileNotFoundError:
+                    pass
+                # Do not count this as a retry; the next loop iteration starts fresh.
+                attempt -= 1
+                time.sleep(retry_delay)
+                continue
+            if attempt == retries:
+                raise
+            print(f"retry {attempt}/{retries} for {url}: {e}", file=sys.stderr)
+            time.sleep(retry_delay)
         except Exception as e:
             if attempt == retries:
                 raise
