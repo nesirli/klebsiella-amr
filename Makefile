@@ -204,15 +204,14 @@ $(AMR_DIR):
 	mkdir -p $@
 
 # Per-sample cleanup of large intermediates ------------------------------------
-# Once AMR, Kraken2, and QUAST are done for a sample, delete its big files
-# (raw reads, trimmed reads, downsampled reads, assembly) before moving on.
-# AMR/QC outputs are intentionally kept here; they are removed later once
-# features and the aggregated MultiQC report are built.
+# Once AMR, Kraken2, and QUAST are done for a sample, delete its read files
+# (raw, trimmed, downsampled) before moving on. Assemblies are kept because
+# they are expensive to regenerate and useful for downstream work.
+# AMR/QC/Kraken/QUAST outputs are kept here and removed in the final cleanup.
 $(CLEAN_DIR)/%_cleaned: $(AMR_DIR)/%_amr.tsv $(KRAKEN_DIR)/%_report.txt $(QUAST_DIR)/%/report.tsv | $(CLEAN_DIR)
 	rm -f $(READS_DIR)/$*_1.fastq.gz $(READS_DIR)/$*_2.fastq.gz \
 	      $(TRIMMED_DIR)/$*_1.fastq.gz $(TRIMMED_DIR)/$*_2.fastq.gz \
-	      $(DOWNSAMPLED_DIR)/$*_1.fastq.gz $(DOWNSAMPLED_DIR)/$*_2.fastq.gz \
-	      $(ASSEMBLY_DIR)/$*_assembled.fasta
+	      $(DOWNSAMPLED_DIR)/$*_1.fastq.gz $(DOWNSAMPLED_DIR)/$*_2.fastq.gz
 	@touch $@
 
 $(QC_DIR)/.done: $(patsubst %,$(QC_DIR)/%_fastp.json,$(SAMPLES)) | $(QC_DIR)
@@ -390,7 +389,7 @@ report:
 		$(MAKE) metadata MAX_SAMPLES=$(MAX_SAMPLES) && $(MAKE) report MAX_SAMPLES=$(MAX_SAMPLES); \
 	else \
 		$(MAKE) $(REPORT_DIR)/summary.json $(MULTIQC_DIR)/multiqc_report.html && \
-		rm -rf $(DATA_DIR) $(FEATURES_DIR) $(SEQUENCES_DIR); \
+		rm -rf $(READS_DIR) $(TRIMMED_DIR) $(DOWNSAMPLED_DIR) $(QC_DIR) $(KRAKEN_DIR) $(QUAST_DIR) $(AMR_DIR) $(CLEAN_DIR) $(FEATURES_DIR) $(SEQUENCES_DIR); \
 	fi
 
 $(REPORT_DIR)/summary.json: $(MODELS_DIR)/.done scripts/summarize.py | $(REPORT_DIR)
