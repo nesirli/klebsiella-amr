@@ -64,9 +64,9 @@ REPORT_DIR      := $(RESULTS_DIR)/report
 
 all:
 	@if [ -z "$(SAMPLES)" ]; then \
-		$(MAKE) metadata MAX_SAMPLES=$(MAX_SAMPLES) && $(MAKE) all MAX_SAMPLES=$(MAX_SAMPLES); \
+		$(MAKE) --no-print-directory metadata MAX_SAMPLES=$(MAX_SAMPLES) && $(MAKE) --no-print-directory all MAX_SAMPLES=$(MAX_SAMPLES); \
 	else \
-		$(MAKE) report; \
+		$(MAKE) --no-print-directory report; \
 	fi
 
 setup:
@@ -209,7 +209,7 @@ $(AMR_DIR):
 # they are expensive to regenerate and useful for downstream work.
 # AMR/QC/Kraken/QUAST outputs are kept here and removed in the final cleanup.
 $(CLEAN_DIR)/%_cleaned: $(AMR_DIR)/%_amr.tsv $(KRAKEN_DIR)/%_report.txt $(QUAST_DIR)/%/report.tsv | $(CLEAN_DIR)
-	rm -f $(READS_DIR)/$*_1.fastq.gz $(READS_DIR)/$*_2.fastq.gz \
+	@rm -f $(READS_DIR)/$*_1.fastq.gz $(READS_DIR)/$*_2.fastq.gz \
 	      $(TRIMMED_DIR)/$*_1.fastq.gz $(TRIMMED_DIR)/$*_2.fastq.gz \
 	      $(DOWNSAMPLED_DIR)/$*_1.fastq.gz $(DOWNSAMPLED_DIR)/$*_2.fastq.gz
 	@touch $@
@@ -284,9 +284,9 @@ $(MODELS_DIR)/nn/tune_%.json: $(FEATURES_DIR)/train_features.csv scripts/tune_nn
 # Models -----------------------------------------------------------------------
 models:
 	@if [ -z "$(SAMPLES)" ]; then \
-		$(MAKE) metadata MAX_SAMPLES=$(MAX_SAMPLES) && $(MAKE) models MAX_SAMPLES=$(MAX_SAMPLES); \
+		$(MAKE) --no-print-directory metadata MAX_SAMPLES=$(MAX_SAMPLES) && $(MAKE) --no-print-directory models MAX_SAMPLES=$(MAX_SAMPLES); \
 	else \
-		$(MAKE) $(MODELS_DIR)/.done; \
+		$(MAKE) --no-print-directory $(MODELS_DIR)/.done; \
 	fi
 
 $(MODELS_DIR)/.done: $(foreach abx,$(ANTIBIOTICS),$(MODELS_DIR)/xgboost/$(abx)_metrics.json) \
@@ -342,9 +342,9 @@ $(MODELS_DIR)/xgboost $(MODELS_DIR)/lightgbm $(MODELS_DIR)/nn:
 # DNABERT-2 (optional) ---------------------------------------------------------
 dnabert:
 	@if [ -z "$(SAMPLES)" ]; then \
-		$(MAKE) metadata MAX_SAMPLES=$(MAX_SAMPLES) && $(MAKE) dnabert MAX_SAMPLES=$(MAX_SAMPLES); \
+		$(MAKE) --no-print-directory metadata MAX_SAMPLES=$(MAX_SAMPLES) && $(MAKE) --no-print-directory dnabert MAX_SAMPLES=$(MAX_SAMPLES); \
 	else \
-		$(MAKE) $(MODELS_DIR)/dnabert/.done; \
+		$(MAKE) --no-print-directory $(MODELS_DIR)/dnabert/.done; \
 	fi
 
 $(MODELS_DIR)/dnabert/.done: $(foreach abx,$(ANTIBIOTICS),$(MODELS_DIR)/dnabert/$(abx)_metrics.json) | $(MODELS_DIR)/dnabert
@@ -369,9 +369,9 @@ $(MODELS_DIR)/dnabert:
 # MultiQC: aggregate fastp + kraken2 + quast -----------------------------------
 multiqc:
 	@if [ -z "$(SAMPLES)" ]; then \
-		$(MAKE) metadata MAX_SAMPLES=$(MAX_SAMPLES) && $(MAKE) multiqc MAX_SAMPLES=$(MAX_SAMPLES); \
+		$(MAKE) --no-print-directory metadata MAX_SAMPLES=$(MAX_SAMPLES) && $(MAKE) --no-print-directory multiqc MAX_SAMPLES=$(MAX_SAMPLES); \
 	else \
-		$(MAKE) $(MULTIQC_DIR)/multiqc_report.html; \
+		$(MAKE) --no-print-directory $(MULTIQC_DIR)/multiqc_report.html; \
 	fi
 
 $(MULTIQC_DIR)/multiqc_report.html: $(QC_DIR)/.done $(KRAKEN_DIR)/.done $(QUAST_DIR)/.done | $(MULTIQC_DIR)
@@ -386,9 +386,9 @@ $(MULTIQC_DIR):
 # Report / interpretability summary --------------------------------------------
 report:
 	@if [ -z "$(SAMPLES)" ]; then \
-		$(MAKE) metadata MAX_SAMPLES=$(MAX_SAMPLES) && $(MAKE) report MAX_SAMPLES=$(MAX_SAMPLES); \
+		$(MAKE) --no-print-directory metadata MAX_SAMPLES=$(MAX_SAMPLES) && $(MAKE) --no-print-directory report MAX_SAMPLES=$(MAX_SAMPLES); \
 	else \
-		$(MAKE) $(REPORT_DIR)/summary.json $(MULTIQC_DIR)/multiqc_report.html && \
+		$(MAKE) --no-print-directory $(REPORT_DIR)/summary.json $(MULTIQC_DIR)/multiqc_report.html && \
 		rm -rf $(READS_DIR) $(TRIMMED_DIR) $(DOWNSAMPLED_DIR) $(QC_DIR) $(KRAKEN_DIR) $(QUAST_DIR) $(AMR_DIR) $(CLEAN_DIR) $(FEATURES_DIR) $(SEQUENCES_DIR); \
 	fi
 
