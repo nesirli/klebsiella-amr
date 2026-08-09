@@ -418,7 +418,9 @@ _process-samples:
 	@echo "$(SAMPLES_ACTIVE)" | tr ' ' '\n' | \
 	xargs -P $(BATCH_SIZE) -I {} sh -c ' \
 		echo "=== {} ==="; \
-		$(MAKE) --no-print-directory $(CLEAN_DIR)/{}_cleaned && echo "{}: OK" || (echo "{}: FAILED"; touch $(CLEAN_DIR)/{}_cleaned); \
+		$(MAKE) --no-print-directory $(CLEAN_DIR)/{}_cleaned && echo "{}: OK" || \
+		(echo "{}: FAILED"; mkdir -p $(CLEAN_DIR); touch $(CLEAN_DIR)/{}_cleaned); \
+		true; \
 	'
 
 process-samples:
