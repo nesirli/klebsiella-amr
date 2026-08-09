@@ -31,6 +31,8 @@ RUN_BIOINFO := conda run --no-capture-output -n bioinfo
 #   make metadata MAX_SAMPLES=20
 #   make metadata MAX_SAMPLES=-1   # full dataset
 MAX_SAMPLES := -1
+BATCH_SIZE ?= 1
+DOWNLOAD_JOBS ?= 4
 
 # Optuna hyperparameter search settings. Tuning is run on the training split
 # before final model training. Reduce trials for faster dev runs.
@@ -60,7 +62,8 @@ REPORT_DIR      := $(RESULTS_DIR)/report
 # Phony targets ----------------------------------------------------------------
 # These point to stamp files so that the underlying data files can be treated as
 # intermediates and removed automatically to save disk space.
-.PHONY: all setup test metadata models dnabert multiqc report clean
+.PHONY: all setup test metadata models dnabert multiqc report clean \
+        process-samples _download-all _process-samples analyze
 
 all:
 	@if [ -z "$(SAMPLES)" ]; then \
@@ -98,20 +101,23 @@ results/metadata/.done: config.yaml scripts/metadata.py results/metadata/config.
 	touch $@
 
 # Reads ------------------------------------------------------------------------
-$(READS_DIR)/.done: $(patsubst %,$(READS_DIR)/%_1.fastq.gz,$(SAMPLES)) | $(READS_DIR)
+SAMPLES_ACTIVE = $(sort $(patsubst $(READS_DIR)/%_1.fastq.gz,%,$(wildcard $(READS_DIR)/*_1.fastq.gz)))
+
+$(READS_DIR)/.done: $(patsubst %,$(READS_DIR)/%_1.fastq.gz,$(SAMPLES_ACTIVE)) | $(READS_DIR)
 	@touch $@
 
 $(READS_DIR)/%_1.fastq.gz $(READS_DIR)/%_2.fastq.gz &: scripts/download_reads.py | $(READS_DIR)
 	$(RUN_AMR) python3 scripts/download_reads.py \
 		--accession $* \
 		--out1 $(READS_DIR)/$*_1.fastq.gz \
-		--out2 $(READS_DIR)/$*_2.fastq.gz
+		--out2 $(READS_DIR)/$*_2.fastq.gz \
+		--allow-skip
 
 $(READS_DIR):
 	mkdir -p $@
 
 # Trimming / fastp -------------------------------------------------------------
-$(TRIMMED_DIR)/.done: $(patsubst %,$(QC_DIR)/%_fastp.json,$(SAMPLES)) | $(TRIMMED_DIR)
+$(TRIMMED_DIR)/.done: $(patsubst %,$(QC_DIR)/%_fastp.json,$(SAMPLES_ACTIVE)) | $(TRIMMED_DIR)
 	@touch $@
 
 $(TRIMMED_DIR)/%_1.fastq.gz $(TRIMMED_DIR)/%_2.fastq.gz $(QC_DIR)/%_fastp.json &: $(READS_DIR)/%_1.fastq.gz $(READS_DIR)/%_2.fastq.gz | $(TRIMMED_DIR) $(QC_DIR)
@@ -134,7 +140,7 @@ $(KRAKEN_DB)/taxo.k2d:
 	tar -xzf $(KRAKEN_DB)/k2_standard_08gb_20250402.tar.gz -C $(KRAKEN_DB)
 	rm $(KRAKEN_DB)/k2_standard_08gb_20250402.tar.gz
 
-$(KRAKEN_DIR)/.done: $(patsubst %,$(KRAKEN_DIR)/%_report.txt,$(SAMPLES)) | $(KRAKEN_DIR)
+$(KRAKEN_DIR)/.done: $(patsubst %,$(KRAKEN_DIR)/%_report.txt,$(SAMPLES_ACTIVE)) | $(KRAKEN_DIR)
 	@touch $@
 
 $(KRAKEN_DIR)/%_report.txt: $(TRIMMED_DIR)/%_1.fastq.gz $(TRIMMED_DIR)/%_2.fastq.gz $(KRAKEN_DB)/taxo.k2d | $(KRAKEN_DIR)
@@ -144,7 +150,7 @@ $(KRAKEN_DIR)/%_report.txt: $(TRIMMED_DIR)/%_1.fastq.gz $(TRIMMED_DIR)/%_2.fastq
 		$(TRIMMED_DIR)/$*_1.fastq.gz $(TRIMMED_DIR)/$*_2.fastq.gz
 
 # QUAST ------------------------------------------------------------------------
-$(QUAST_DIR)/.done: $(patsubst %,$(QUAST_DIR)/%/report.tsv,$(SAMPLES)) | $(QUAST_DIR)
+$(QUAST_DIR)/.done: $(patsubst %,$(QUAST_DIR)/%/report.tsv,$(SAMPLES_ACTIVE)) | $(QUAST_DIR)
 	@touch $@
 
 $(QUAST_DIR)/%/report.tsv: $(ASSEMBLY_DIR)/%_assembled.fasta | $(QUAST_DIR)
@@ -157,7 +163,7 @@ $(TRIMMED_DIR) $(QC_DIR) $(KRAKEN_DIR) $(QUAST_DIR) $(CLEAN_DIR):
 	mkdir -p $@
 
 # Assembly ----------------------------------------------------------------------
-$(DOWNSAMPLED_DIR)/.done: $(patsubst %,$(DOWNSAMPLED_DIR)/%_1.fastq.gz,$(SAMPLES)) | $(DOWNSAMPLED_DIR)
+$(DOWNSAMPLED_DIR)/.done: $(patsubst %,$(DOWNSAMPLED_DIR)/%_1.fastq.gz,$(SAMPLES_ACTIVE)) | $(DOWNSAMPLED_DIR)
 	@touch $@
 
 $(DOWNSAMPLED_DIR)/%_1.fastq.gz $(DOWNSAMPLED_DIR)/%_2.fastq.gz &: $(TRIMMED_DIR)/%_1.fastq.gz $(TRIMMED_DIR)/%_2.fastq.gz $(QC_DIR)/%_fastp.json | $(DOWNSAMPLED_DIR)
@@ -165,7 +171,7 @@ $(DOWNSAMPLED_DIR)/%_1.fastq.gz $(DOWNSAMPLED_DIR)/%_2.fastq.gz &: $(TRIMMED_DIR
 	$(RUN_BIOINFO) seqtk sample -s42 $(TRIMMED_DIR)/$*_1.fastq.gz $$fraction | gzip > $(DOWNSAMPLED_DIR)/$*_1.fastq.gz; \
 	$(RUN_BIOINFO) seqtk sample -s42 $(TRIMMED_DIR)/$*_2.fastq.gz $$fraction | gzip > $(DOWNSAMPLED_DIR)/$*_2.fastq.gz
 
-$(ASSEMBLY_DIR)/.done: $(patsubst %,$(ASSEMBLY_DIR)/%_assembled.fasta,$(SAMPLES)) | $(ASSEMBLY_DIR)
+$(ASSEMBLY_DIR)/.done: $(patsubst %,$(ASSEMBLY_DIR)/%_assembled.fasta,$(SAMPLES_ACTIVE)) | $(ASSEMBLY_DIR)
 	@touch $@
 
 $(ASSEMBLY_DIR)/%_assembled.fasta: $(DOWNSAMPLED_DIR)/%_1.fastq.gz $(DOWNSAMPLED_DIR)/%_2.fastq.gz | $(ASSEMBLY_DIR)
@@ -183,7 +189,7 @@ $(DOWNSAMPLED_DIR) $(ASSEMBLY_DIR):
 	mkdir -p $@
 
 # AMRFinderPlus ----------------------------------------------------------------
-$(AMR_DIR)/.done: $(patsubst %,$(AMR_DIR)/%_amr.tsv,$(SAMPLES)) | $(AMR_DIR)
+$(AMR_DIR)/.done: $(patsubst %,$(AMR_DIR)/%_amr.tsv,$(SAMPLES_ACTIVE)) | $(AMR_DIR)
 	@touch $@
 
 $(AMRFINDER_DB)/latest/AMR.LIB:
@@ -214,14 +220,14 @@ $(CLEAN_DIR)/%_cleaned: $(AMR_DIR)/%_amr.tsv $(KRAKEN_DIR)/%_report.txt $(QUAST_
 	      $(DOWNSAMPLED_DIR)/$*_1.fastq.gz $(DOWNSAMPLED_DIR)/$*_2.fastq.gz
 	@touch $@
 
-$(QC_DIR)/.done: $(patsubst %,$(QC_DIR)/%_fastp.json,$(SAMPLES)) | $(QC_DIR)
+$(QC_DIR)/.done: $(patsubst %,$(QC_DIR)/%_fastp.json,$(SAMPLES_ACTIVE)) | $(QC_DIR)
 	@touch $@
 
 # Features (tabular) -----------------------------------------------------------
 $(FEATURES_DIR)/train_features.csv $(FEATURES_DIR)/test_features.csv: $(FEATURES_DIR)/.done
 	@true
 
-$(FEATURES_DIR)/.done: $(patsubst %,$(CLEAN_DIR)/%_cleaned,$(SAMPLES)) results/metadata/train.csv results/metadata/test.csv scripts/build_features.py | $(FEATURES_DIR)
+$(FEATURES_DIR)/.done: $(patsubst %,$(CLEAN_DIR)/%_cleaned,$(SAMPLES_ACTIVE)) results/metadata/train.csv results/metadata/test.csv scripts/build_features.py | $(FEATURES_DIR)
 	$(RUN_AMR) python3 scripts/build_features.py \
 		--amr-files $(AMR_DIR)/*_amr.tsv \
 		--train-metadata results/metadata/train.csv \
@@ -237,7 +243,7 @@ $(FEATURES_DIR):
 $(SEQUENCES_DIR)/train_sequences.csv $(SEQUENCES_DIR)/test_sequences.csv: $(SEQUENCES_DIR)/.done
 	@true
 
-$(SEQUENCES_DIR)/.done: $(patsubst %,$(CLEAN_DIR)/%_cleaned,$(SAMPLES)) results/metadata/train.csv results/metadata/test.csv scripts/build_sequences.py | $(SEQUENCES_DIR)
+$(SEQUENCES_DIR)/.done: $(patsubst %,$(CLEAN_DIR)/%_cleaned,$(SAMPLES_ACTIVE)) results/metadata/train.csv results/metadata/test.csv scripts/build_sequences.py | $(SEQUENCES_DIR)
 	$(RUN_AMR) python3 scripts/build_sequences.py \
 		--seq-files $(AMR_DIR)/*_amr_genes.fna \
 		--train-metadata results/metadata/train.csv \
@@ -383,12 +389,67 @@ $(MULTIQC_DIR)/multiqc_report.html: $(QC_DIR)/.done $(KRAKEN_DIR)/.done $(QUAST_
 $(MULTIQC_DIR):
 	mkdir -p $@
 
+# Batch processing (disk-efficient) --------------------------------------------
+# Downloads all samples in parallel (skipping inaccessible ones), then processes
+# each sample end-to-end through all stages (trim -> downsample -> assemble ->
+# amr -> kraken2 -> quast) before cleaning up intermediate files. This limits
+# peak disk usage to ~BATCH_SIZE samples' worth of intermediate data.
+
+_download-all: $(READS_DIR)
+	@echo "Downloading reads for $(words $(SAMPLES)) samples ($(DOWNLOAD_JOBS) at a time)..."
+	@echo "$(SAMPLES)" | tr ' ' '\n' | \
+	xargs -P $(DOWNLOAD_JOBS) -I {} sh -c '$(MAKE) --no-print-directory $(READS_DIR)/{}_1.fastq.gz 2>&1 || true'
+	@for skip in $(READS_DIR)/*.skip; do \
+		[ -f "$$skip" ] || continue; \
+		acc=$$(basename "$$skip" .skip); \
+		mkdir -p $(CLEAN_DIR); \
+		touch $(CLEAN_DIR)/$${acc}_cleaned; \
+	done
+	@skipped=$$(ls $(READS_DIR)/*.skip 2>/dev/null | wc -l); \
+	active=$$(ls $(READS_DIR)/*_1.fastq.gz 2>/dev/null | wc -l); \
+	echo "Downloaded: $$active samples | Skipped: $$skipped samples"
+
+_process-samples:
+	@if [ -z "$(SAMPLES_ACTIVE)" ]; then \
+		echo "No accessible samples to process."; \
+		exit 0; \
+	fi
+	@echo "Processing $(words $(SAMPLES_ACTIVE)) samples end-to-end ($(BATCH_SIZE) at a time)..."
+	@echo "$(SAMPLES_ACTIVE)" | tr ' ' '\n' | \
+	xargs -P $(BATCH_SIZE) -I {} sh -c ' \
+		echo "=== {} ==="; \
+		$(MAKE) --no-print-directory $(CLEAN_DIR)/{}_cleaned && echo "{}: OK" || (echo "{}: FAILED"; touch $(CLEAN_DIR)/{}_cleaned); \
+	'
+
+process-samples:
+	@if [ -z "$(SAMPLES)" ]; then \
+		$(MAKE) --no-print-directory metadata MAX_SAMPLES=$(MAX_SAMPLES) && \
+		$(MAKE) --no-print-directory process-samples MAX_SAMPLES=$(MAX_SAMPLES); \
+	else \
+		$(MAKE) --no-print-directory _download-all && \
+		$(MAKE) --no-print-directory _process-samples; \
+	fi
+
+# Post-assembly analysis (features + sequences + models + multiqc + summary) ----
+analyze:
+	@if [ -z "$(SAMPLES)" ]; then \
+		$(MAKE) --no-print-directory metadata MAX_SAMPLES=$(MAX_SAMPLES) && \
+		$(MAKE) --no-print-directory analyze MAX_SAMPLES=$(MAX_SAMPLES); \
+	else \
+		$(MAKE) --no-print-directory $(FEATURES_DIR)/.done \
+		                   $(SEQUENCES_DIR)/.done \
+		                   $(MODELS_DIR)/.done \
+		                   $(MULTIQC_DIR)/multiqc_report.html \
+		                   $(REPORT_DIR)/summary.json; \
+	fi
+
 # Report / interpretability summary --------------------------------------------
 report:
 	@if [ -z "$(SAMPLES)" ]; then \
 		$(MAKE) --no-print-directory metadata MAX_SAMPLES=$(MAX_SAMPLES) && $(MAKE) --no-print-directory report MAX_SAMPLES=$(MAX_SAMPLES); \
 	else \
-		$(MAKE) --no-print-directory $(REPORT_DIR)/summary.json $(MULTIQC_DIR)/multiqc_report.html && \
+		$(MAKE) --no-print-directory process-samples && \
+		$(MAKE) --no-print-directory analyze && \
 		rm -rf $(READS_DIR) $(TRIMMED_DIR) $(DOWNSAMPLED_DIR) $(QC_DIR) $(KRAKEN_DIR) $(QUAST_DIR) $(AMR_DIR) $(CLEAN_DIR) $(FEATURES_DIR) $(SEQUENCES_DIR); \
 	fi
 

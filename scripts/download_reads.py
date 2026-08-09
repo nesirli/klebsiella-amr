@@ -169,14 +169,57 @@ def download_and_concat(urls, final_dest, retries=MAX_RETRIES, retry_delay=RETRY
         part.unlink()
 
 
+SKIP_MARKER_SUFFIX = ".skip"
+
+
+def _try_fetch_fastq_urls(accession):
+    try:
+        return fetch_fastq_urls(accession)
+    except urllib.error.HTTPError as e:
+        if e.code in (403, 404):
+            return None
+        raise
+    except Exception as e:
+        msg = str(e).lower()
+        if "could not pair fastq urls" in msg or "empty filereport" in msg:
+            return None
+        if "no fastq_ftp urls" in msg:
+            return None
+        raise
+
+
 def main():
     parser = argparse.ArgumentParser(description="Download paired-end reads from ENA")
     parser.add_argument("--accession", required=True)
     parser.add_argument("--out1", required=True)
     parser.add_argument("--out2", required=True)
+    parser.add_argument(
+        "--allow-skip",
+        action="store_true",
+        help="Create a .skip marker instead of failing for controlled-access or "
+        "single-end samples",
+    )
     args = parser.parse_args()
 
-    r1_urls, r2_urls = fetch_fastq_urls(args.accession)
+    result = _try_fetch_fastq_urls(args.accession)
+
+    if result is None:
+        if args.allow_skip:
+            skip_marker = Path(args.out1).parent / f"{args.accession}{SKIP_MARKER_SUFFIX}"
+            skip_marker.touch()
+            print(
+                f"SKIP: {args.accession} is not publicly accessible (controlled access, "
+                f"missing data, or single-end only)",
+                file=sys.stderr,
+            )
+            sys.exit(0)
+        else:
+            raise RuntimeError(
+                f"{args.accession}: cannot fetch FASTQ URLs — sample may be "
+                f"controlled-access or single-end. Use --allow-skip to skip gracefully."
+            )
+
+    r1_urls, r2_urls = result
     download_and_concat(r1_urls, args.out1)
     download_and_concat(r2_urls, args.out2)
 
