@@ -400,12 +400,6 @@ _download-all: $(READS_DIR)
 	@echo "Downloading reads for $(words $(SAMPLES)) samples ($(DOWNLOAD_JOBS) at a time)..."
 	@echo "$(SAMPLES)" | tr ' ' '\n' | \
 	xargs -P $(DOWNLOAD_JOBS) -I {} sh -c '$(MAKE) --no-print-directory $(READS_DIR)/{}_1.fastq.gz 2>&1 || true'
-	@for skip in $(READS_DIR)/*.skip; do \
-		[ -f "$$skip" ] || continue; \
-		acc=$$(basename "$$skip" .skip); \
-		mkdir -p $(CLEAN_DIR); \
-		touch $(CLEAN_DIR)/$${acc}_cleaned; \
-	done
 	@skipped=$$(ls $(READS_DIR)/*.skip 2>/dev/null | wc -l); \
 	active=$$(ls $(READS_DIR)/*_1.fastq.gz 2>/dev/null | wc -l); \
 	echo "Downloaded: $$active samples | Skipped: $$skipped samples"
