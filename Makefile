@@ -101,7 +101,8 @@ results/metadata/.done: config.yaml scripts/metadata.py results/metadata/config.
 	touch $@
 
 # Reads ------------------------------------------------------------------------
-SAMPLES_ACTIVE = $(sort $(patsubst $(READS_DIR)/%_1.fastq.gz,%,$(wildcard $(READS_DIR)/*_1.fastq.gz)))
+SAMPLES_ACTIVE = $(sort $(patsubst $(QC_DIR)/%_fastp.json,%,$(wildcard $(QC_DIR)/*_fastp.json)))
+SAMPLES_WITH_READS = $(sort $(patsubst $(READS_DIR)/%_1.fastq.gz,%,$(wildcard $(READS_DIR)/*_1.fastq.gz)))
 
 $(READS_DIR)/.done: $(patsubst %,$(READS_DIR)/%_1.fastq.gz,$(SAMPLES_ACTIVE)) | $(READS_DIR)
 	@touch $@
@@ -410,16 +411,16 @@ _download-all: $(READS_DIR)
 	echo "Downloaded: $$active samples | Skipped: $$skipped samples"
 
 _process-samples:
-	@if [ -z "$(SAMPLES_ACTIVE)" ]; then \
-		echo "No accessible samples to process."; \
+	@if [ -z "$(SAMPLES_WITH_READS)" ]; then \
+		echo "No samples with reads to process."; \
 		exit 0; \
 	fi
-	@echo "Processing $(words $(SAMPLES_ACTIVE)) samples end-to-end ($(BATCH_SIZE) at a time)..."
-	@echo "$(SAMPLES_ACTIVE)" | tr ' ' '\n' | \
+	@echo "Processing $(words $(SAMPLES_WITH_READS)) samples end-to-end ($(BATCH_SIZE) at a time)..."
+	@echo "$(SAMPLES_WITH_READS)" | tr ' ' '\n' | \
 	xargs -P $(BATCH_SIZE) -I {} sh -c ' \
 		echo "=== {} ==="; \
 		$(MAKE) --no-print-directory $(CLEAN_DIR)/{}_cleaned && echo "{}: OK" || \
-		(echo "{}: FAILED"; mkdir -p $(CLEAN_DIR); touch $(CLEAN_DIR)/{}_cleaned); \
+		(echo "{}: FAILED"; rm -f $(READS_DIR)/{}_1.fastq.gz $(READS_DIR)/{}_2.fastq.gz; mkdir -p $(CLEAN_DIR); touch $(CLEAN_DIR)/{}_cleaned); \
 		true; \
 	'
 
