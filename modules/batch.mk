@@ -5,12 +5,12 @@
 # peak disk usage to ~BATCH_SIZE samples' worth of intermediate data.
 
 _download-all: $(READS_DIR)
-	@echo "Downloading reads for $(words $(SAMPLES)) samples ($(DOWNLOAD_JOBS) at a time)..."
+	@echo "Downloading reads for $(words $(SAMPLES)) samples ($(BATCH_SIZE) at a time)..."
 	@count=0; \
 	for sample in $(SAMPLES); do \
 		($(MAKE) --no-print-directory $(READS_DIR)/$${sample}_1.fastq.gz 2>&1 || true) & \
 		count=$$((count + 1)); \
-		if [ $$count -ge $(DOWNLOAD_JOBS) ]; then wait; count=0; fi; \
+		if [ $$count -ge $(BATCH_SIZE) ]; then wait; count=0; fi; \
 	done; \
 	wait
 	@skipped=$$(ls $(READS_DIR)/*.skip 2>/dev/null | wc -l | tr -d ' '); \

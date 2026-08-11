@@ -30,7 +30,6 @@ def main():
         f"SPADES_THREADS := {c['resources']['spades_threads']}",
         f"SPADES_MEMORY := {c['resources']['spades_memory']}",
         f"AMRFINDER_THREADS := {c['resources']['amrfinder_threads']}",
-        f"DOWNLOAD_JOBS := {c['resources']['download_jobs']}",
     ]
 
     Path(args.output).parent.mkdir(parents=True, exist_ok=True)

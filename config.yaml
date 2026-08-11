@@ -36,4 +36,3 @@ resources:
   spades_threads: 8
   spades_memory: 16
   amrfinder_threads: 4
-  download_jobs: 4
