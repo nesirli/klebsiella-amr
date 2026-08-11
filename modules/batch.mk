@@ -6,10 +6,15 @@
 
 _download-all: $(READS_DIR)
 	@echo "Downloading reads for $(words $(SAMPLES)) samples ($(DOWNLOAD_JOBS) at a time)..."
-	@echo "$(SAMPLES)" | tr ' ' '\n' | \
-	xargs -P $(DOWNLOAD_JOBS) -I {} sh -c '$(MAKE) --no-print-directory $(READS_DIR)/{}_1.fastq.gz 2>&1 || true'
-	@skipped=$$(ls $(READS_DIR)/*.skip 2>/dev/null | wc -l); \
-	active=$$(ls $(READS_DIR)/*_1.fastq.gz 2>/dev/null | wc -l); \
+	@count=0; \
+	for sample in $(SAMPLES); do \
+		($(MAKE) --no-print-directory $(READS_DIR)/$${sample}_1.fastq.gz 2>&1 || true) & \
+		count=$$((count + 1)); \
+		if [ $$count -ge $(DOWNLOAD_JOBS) ]; then wait; count=0; fi; \
+	done; \
+	wait
+	@skipped=$$(ls $(READS_DIR)/*.skip 2>/dev/null | wc -l | tr -d ' '); \
+	active=$$(ls $(READS_DIR)/*_1.fastq.gz 2>/dev/null | wc -l | tr -d ' '); \
 	echo "Downloaded: $$active samples | Skipped: $$skipped samples"
 
 _process-samples:
@@ -18,13 +23,18 @@ _process-samples:
 		exit 0; \
 	fi
 	@echo "Processing $(words $(SAMPLES_WITH_READS)) samples end-to-end ($(BATCH_SIZE) at a time)..."
-	@echo "$(SAMPLES_WITH_READS)" | tr ' ' '\n' | \
-	xargs -P $(BATCH_SIZE) -I {} sh -c ' \
-		echo "=== {} ==="; \
-		$(MAKE) --no-print-directory $(CLEAN_DIR)/{}_cleaned && echo "{}: OK" || \
-		(echo "{}: FAILED"; rm -f $(READS_DIR)/{}_1.fastq.gz $(READS_DIR)/{}_2.fastq.gz; mkdir -p $(CLEAN_DIR); touch $(CLEAN_DIR)/{}_cleaned); \
-		true; \
-	'
+	@count=0; \
+	for sample in $(SAMPLES_WITH_READS); do \
+		( \
+			echo "=== $$sample ==="; \
+			$(MAKE) --no-print-directory $(CLEAN_DIR)/$${sample}_cleaned && echo "$$sample: OK" || \
+			(echo "$$sample: FAILED"; rm -f $(READS_DIR)/$${sample}_1.fastq.gz $(READS_DIR)/$${sample}_2.fastq.gz; mkdir -p $(CLEAN_DIR); touch $(CLEAN_DIR)/$${sample}_cleaned) \
+		) & \
+		count=$$((count + 1)); \
+		if [ $$count -ge $(BATCH_SIZE) ]; then wait; count=0; fi; \
+	done; \
+	wait; \
+	true
 
 process-samples:
 	@if [ -z "$(SAMPLES)" ]; then \
