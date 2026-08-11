@@ -27,8 +27,9 @@ RUN_AMR     := conda run --no-capture-output -n amr
 RUN_BIOINFO := conda run --no-capture-output -n bioinfo
 
 # Settings ---------------------------------------------------------------------
-MAX_SAMPLES  := -1
-BATCH_SIZE   ?= 1
+MAX_SAMPLES    := -1
+BATCH_SIZE     ?= 1
+DOWNLOAD_JOBS  ?= 10
 
 TUNE_TRIALS_XGB := 30
 TUNE_TRIALS_LGB := 30
