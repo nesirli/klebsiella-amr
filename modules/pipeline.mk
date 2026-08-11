@@ -1,6 +1,5 @@
 # Active sample tracking ------------------------------------------------------
-SAMPLES_ACTIVE       = $(sort $(patsubst $(QC_DIR)/%_fastp.json,%,$(wildcard $(QC_DIR)/*_fastp.json)))
-SAMPLES_WITH_READS   = $(sort $(patsubst $(READS_DIR)/%_1.fastq.gz,%,$(wildcard $(READS_DIR)/*_1.fastq.gz)))
+SAMPLES_ACTIVE = $(sort $(patsubst $(QC_DIR)/%_fastp.json,%,$(wildcard $(QC_DIR)/*_fastp.json)))
 
 # Reads -----------------------------------------------------------------------
 $(READS_DIR)/.done: $(patsubst %,$(READS_DIR)/%_1.fastq.gz,$(SAMPLES_ACTIVE)) | $(READS_DIR)

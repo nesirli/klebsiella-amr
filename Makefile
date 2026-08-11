@@ -29,7 +29,6 @@ RUN_BIOINFO := conda run --no-capture-output -n bioinfo
 # Settings ---------------------------------------------------------------------
 MAX_SAMPLES    := -1
 BATCH_SIZE     ?= 1
-DOWNLOAD_JOBS  ?= 10
 
 TUNE_TRIALS_XGB := 30
 TUNE_TRIALS_LGB := 30
@@ -83,7 +82,7 @@ $(MULTIQC_DIR) $(REPORT_DIR):
 
 # Phony targets ----------------------------------------------------------------
 .PHONY: all setup test metadata models dnabert multiqc report clean \
-        tune process-samples _download-all _process-samples analyze
+        tune process-samples _process-samples analyze
 
 all:
 	@if [ -z "$(SAMPLES)" ]; then \
