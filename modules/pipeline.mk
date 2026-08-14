@@ -45,6 +45,7 @@ $(KRAKEN_DIR)/.done: $(patsubst %,$(KRAKEN_DIR)/%_report.txt,$(SAMPLES_ACTIVE)) 
 $(KRAKEN_DIR)/%_report.txt: $(TRIMMED_DIR)/%_1.fastq.gz $(TRIMMED_DIR)/%_2.fastq.gz $(KRAKEN_DB)/taxo.k2d | $(KRAKEN_DIR)
 	$(RUN_BIOINFO) kraken2 --db $(KRAKEN_DB) \
 		--paired --gzip-compressed --memory-mapping \
+		--threads $(KRAKEN_THREADS) \
 		--report $@ --output /dev/null \
 		$(TRIMMED_DIR)/$*_1.fastq.gz $(TRIMMED_DIR)/$*_2.fastq.gz
 
