@@ -43,9 +43,13 @@ Edit `config.yaml` to change:
 
 - input metadata path
 - antibiotics and temporal split years
-- `max_samples` default
+- `max_samples` default (a `MAX_SAMPLES=N` on the command line overrides it)
 - reference database locations
 - per-tool thread/memory settings
+
+`config.yaml` is exported to make variables by `scripts/export_config.py`, so
+changing it re-runs whatever depends on it. Changing `MAX_SAMPLES` re-runs the
+split even though it is not a file.
 
 ## Makefile targets
 
@@ -53,8 +57,9 @@ Edit `config.yaml` to change:
 |--------|-------------|
 | `make setup` | Create the two conda environments |
 | `make metadata` | Parse metadata and create train/test splits |
+| `make tune` | Optuna hyperparameter search (runs automatically before training) |
 | `make models` | Train XGBoost, LightGBM, and NN |
-| `make dnabert` | Train optional DNABERT-2 model (run before `report`) |
+| `make dnabert` | Train optional DNABERT-2 model (run before `report` to include it in the summary) |
 | `make multiqc` | Build single aggregated MultiQC report |
 | `make report` | `multiqc` + aggregated metrics; then delete all intermediates |
 | `make all` | `report` |
@@ -64,11 +69,12 @@ Edit `config.yaml` to change:
 
 The pipeline deletes intermediate files as soon as they are no longer needed so it can scale to thousands of samples on a laptop.
 
-- **Per-sample cleanup**: as soon as AMRFinderPlus, Kraken2, and QUAST finish for a sample, its raw reads, trimmed reads, downsampled reads, and assembly are deleted.
-- **`make report` final cleanup**: once the MultiQC report and summary are ready, `make report` deletes everything in `data/` plus `results/features/` and `results/sequences/`.
+- **Per-sample cleanup**: as soon as AMRFinderPlus, Kraken2, and QUAST finish for a sample, its raw reads, trimmed reads, and downsampled reads are deleted. Assemblies are kept.
+- **Failed samples** are *retired*: every intermediate they own is deleted, including their `fastp` JSON, which drops them out of the active sample list so one bad accession cannot fail the run.
+- **`make report` final cleanup**: once the MultiQC report and summary are ready, `make report` deletes everything in `data/` except `data/assembly/`, plus `results/features/` and `results/sequences/`.
 - **Reference databases** (~10 GB total) are downloaded once and kept in `reference/`.
 - **During a run** you need enough temporary space for the samples currently in flight (roughly the size of their FASTQs plus assembled contigs), multiplied by the `-j` parallelism level.
-- **After `make report`** only `results/` is kept: model files, predictions, importance tables, plots, `results/multiqc/multiqc_report.html`, `results/report/summary.json`, and `results/metadata/`.
+- **After `make report`** only `results/` and `data/assembly/` are kept: model files, predictions, importance tables, plots, `results/multiqc/multiqc_report.html`, `results/report/summary.json`, and `results/metadata/`.
 
 ## Project structure
 
@@ -76,35 +82,57 @@ The pipeline deletes intermediate files as soon as they are no longer needed so 
 .
 ├── Makefile                  # pipeline orchestration
 ├── config.yaml               # user-editable configuration
+├── modules/                  # Makefile includes, one per pipeline stage
+│   ├── config.mk             # config.yaml -> make variables
+│   ├── metadata.mk           # train/test split
+│   ├── pipeline.mk           # per-sample rules: download -> trim -> assemble -> AMR
+│   ├── features.mk           # gene matrices
+│   ├── models.mk             # tuning + training rules
+│   └── batch.mk              # batch driver, MultiQC, report
 ├── envs/
 │   ├── env-ml.yml            # amr: Python + ML dependencies
 │   └── env-bio.yml           # bioinfo: fastp, spades, kraken2, quast, amrfinderplus, multiqc, seqtk
 ├── metadata.csv              # input metadata (semicolon-delimited)
 ├── scripts/
+│   ├── common.py             # shared data loading, metrics, artifacts, Optuna driver
+│   ├── mlp.py                # the MLP shared by train_nn.py and tune_nn.py
 │   ├── metadata.py
 │   ├── download_reads.py
 │   ├── build_features.py
 │   ├── build_sequences.py
 │   ├── export_config.py
 │   ├── summarize.py
-│   ├── train_xgboost.py
-│   ├── train_lightgbm.py
-│   ├── train_nn.py
-│   └── train_dnabert.py
+│   ├── train_{xgboost,lightgbm,nn,dnabert}.py
+│   └── tune_{xgboost,lightgbm,nn}.py
 ├── reference/                # downloaded reference databases
 ├── data/                     # transient per-sample files (auto-deleted)
 └── results/                  # features, models, reports (kept)
 ```
 
+Every model script shares one contract, implemented in `scripts/common.py`: read a
+gene matrix, fit one binary R-vs-S classifier for one antibiotic, and emit the same
+six artifacts (model, params, metrics, predictions, importance CSV, importance
+plot). Only the estimator and its importance method differ between models. An
+antibiotic without enough labelled data to fit still emits all six, marked
+`"skipped"`, so a partial dataset cannot fail the run.
+
+Tuners hand hyperparameters to trainers as
+`{"hyperparameters": {...}, "tuning": {...}}` — search bookkeeping is kept out of
+the block that gets splatted into the estimator.
+
 ## Interpretability
 
-Each model emits its own feature-importance CSV and plot:
+Each model emits a `gene,importance` CSV (most important first) and a plot. The
+column is the same across models so they can be compared side by side; what fills
+it differs:
 
-- **XGBoost / LightGBM**: SHAP summary plots
-- **MLP**: permutation importance
-- **DNABERT-2**: occlusion importance over gene sequences
+- **XGBoost / LightGBM**: mean |SHAP| over the training rows, plotted as a SHAP beeswarm
+- **MLP**: permutation importance — drop in test ROC AUC when a gene column is shuffled
+- **DNABERT-2**: occlusion importance — drop in test P(resistant) when a gene is removed from the pooled embedding
 
-The `report` target aggregates per-model metrics and top features across antibiotics.
+The `report` target aggregates per-model metrics and the top genes per
+model/antibiotic into `results/report/summary.json`. Models that were not run
+(DNABERT-2 is optional) are simply absent from it.
 
 ## Requirements
 
