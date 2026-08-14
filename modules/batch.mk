@@ -71,8 +71,8 @@ $(MULTIQC_DIR)/multiqc_report.html: $(QC_DIR)/.done $(KRAKEN_DIR)/.done $(QUAST_
 
 # Post-assembly analysis (features + sequences + models + multiqc + summary) ---
 analyze:
-	$(call need-samples,$(FEATURES_DIR)/.done \
-	                    $(SEQUENCES_DIR)/.done \
+	$(call need-samples,$(FEATURES_DIR)/train_features.csv \
+	                    $(SEQUENCES_DIR)/train_sequences.csv \
 	                    $(MODELS_DIR)/.done \
 	                    $(MULTIQC_DIR)/multiqc_report.html \
 	                    $(REPORT_DIR)/summary.json)
