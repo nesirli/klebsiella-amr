@@ -1,9 +1,11 @@
 # Hyperparameter tuning (Optuna) ----------------------------------------------
+# Each tuner writes {"hyperparameters": {...}, "tuning": {...}}; the matching
+# trainer reads the first block via --params-input.
 tune: $(foreach abx,$(ANTIBIOTICS),$(MODELS_DIR)/xgboost/tune_$(abx).json) \
       $(foreach abx,$(ANTIBIOTICS),$(MODELS_DIR)/lightgbm/tune_$(abx).json) \
       $(foreach abx,$(ANTIBIOTICS),$(MODELS_DIR)/nn/tune_$(abx).json)
 
-$(MODELS_DIR)/xgboost/tune_%.json: $(FEATURES_DIR)/train_features.csv scripts/tune_xgboost.py | $(MODELS_DIR)/xgboost
+$(MODELS_DIR)/xgboost/tune_%.json: $(FEATURES_DIR)/train_features.csv scripts/tune_xgboost.py scripts/common.py | $(MODELS_DIR)/xgboost
 	$(RUN_AMR) python3 scripts/tune_xgboost.py \
 		--train-features $(FEATURES_DIR)/train_features.csv \
 		--antibiotic $* \
@@ -12,7 +14,7 @@ $(MODELS_DIR)/xgboost/tune_%.json: $(FEATURES_DIR)/train_features.csv scripts/tu
 		--n-splits $(TUNE_SPLITS) \
 		--output $@
 
-$(MODELS_DIR)/lightgbm/tune_%.json: $(FEATURES_DIR)/train_features.csv scripts/tune_lightgbm.py | $(MODELS_DIR)/lightgbm
+$(MODELS_DIR)/lightgbm/tune_%.json: $(FEATURES_DIR)/train_features.csv scripts/tune_lightgbm.py scripts/common.py | $(MODELS_DIR)/lightgbm
 	$(RUN_AMR) python3 scripts/tune_lightgbm.py \
 		--train-features $(FEATURES_DIR)/train_features.csv \
 		--antibiotic $* \
@@ -21,7 +23,7 @@ $(MODELS_DIR)/lightgbm/tune_%.json: $(FEATURES_DIR)/train_features.csv scripts/t
 		--n-splits $(TUNE_SPLITS) \
 		--output $@
 
-$(MODELS_DIR)/nn/tune_%.json: $(FEATURES_DIR)/train_features.csv scripts/tune_nn.py | $(MODELS_DIR)/nn
+$(MODELS_DIR)/nn/tune_%.json: $(FEATURES_DIR)/train_features.csv scripts/tune_nn.py scripts/mlp.py scripts/common.py | $(MODELS_DIR)/nn
 	$(RUN_AMR) python3 scripts/tune_nn.py \
 		--train-features $(FEATURES_DIR)/train_features.csv \
 		--antibiotic $* \
@@ -43,7 +45,7 @@ $(MODELS_DIR)/.done: $(foreach abx,$(ANTIBIOTICS),$(MODELS_DIR)/xgboost/$(abx)_m
                      $(foreach abx,$(ANTIBIOTICS),$(MODELS_DIR)/nn/$(abx)_metrics.json)
 	@touch $@
 
-$(MODELS_DIR)/xgboost/%_metrics.json: $(FEATURES_DIR)/train_features.csv $(FEATURES_DIR)/test_features.csv scripts/train_xgboost.py $(MODELS_DIR)/xgboost/tune_%.json | $(MODELS_DIR)/xgboost
+$(MODELS_DIR)/xgboost/%_metrics.json: $(FEATURES_DIR)/train_features.csv $(FEATURES_DIR)/test_features.csv scripts/train_xgboost.py scripts/common.py $(MODELS_DIR)/xgboost/tune_%.json | $(MODELS_DIR)/xgboost
 	$(RUN_AMR) python3 scripts/train_xgboost.py \
 		--train-features $(FEATURES_DIR)/train_features.csv \
 		--test-features $(FEATURES_DIR)/test_features.csv \
@@ -55,9 +57,9 @@ $(MODELS_DIR)/xgboost/%_metrics.json: $(FEATURES_DIR)/train_features.csv $(FEATU
 		--metrics-output $@ \
 		--predictions-output $(MODELS_DIR)/xgboost/$*_predictions.csv \
 		--importance-output $(MODELS_DIR)/xgboost/$*_importance.csv \
-		--shap-plot-output $(MODELS_DIR)/xgboost/$*_shap.png
+		--importance-plot-output $(MODELS_DIR)/xgboost/$*_shap.png
 
-$(MODELS_DIR)/lightgbm/%_metrics.json: $(FEATURES_DIR)/train_features.csv $(FEATURES_DIR)/test_features.csv scripts/train_lightgbm.py $(MODELS_DIR)/lightgbm/tune_%.json | $(MODELS_DIR)/lightgbm
+$(MODELS_DIR)/lightgbm/%_metrics.json: $(FEATURES_DIR)/train_features.csv $(FEATURES_DIR)/test_features.csv scripts/train_lightgbm.py scripts/common.py $(MODELS_DIR)/lightgbm/tune_%.json | $(MODELS_DIR)/lightgbm
 	$(RUN_AMR) python3 scripts/train_lightgbm.py \
 		--train-features $(FEATURES_DIR)/train_features.csv \
 		--test-features $(FEATURES_DIR)/test_features.csv \
@@ -69,9 +71,9 @@ $(MODELS_DIR)/lightgbm/%_metrics.json: $(FEATURES_DIR)/train_features.csv $(FEAT
 		--metrics-output $@ \
 		--predictions-output $(MODELS_DIR)/lightgbm/$*_predictions.csv \
 		--importance-output $(MODELS_DIR)/lightgbm/$*_importance.csv \
-		--shap-plot-output $(MODELS_DIR)/lightgbm/$*_shap.png
+		--importance-plot-output $(MODELS_DIR)/lightgbm/$*_shap.png
 
-$(MODELS_DIR)/nn/%_metrics.json: $(FEATURES_DIR)/train_features.csv $(FEATURES_DIR)/test_features.csv scripts/train_nn.py $(MODELS_DIR)/nn/tune_%.json | $(MODELS_DIR)/nn
+$(MODELS_DIR)/nn/%_metrics.json: $(FEATURES_DIR)/train_features.csv $(FEATURES_DIR)/test_features.csv scripts/train_nn.py scripts/mlp.py scripts/common.py $(MODELS_DIR)/nn/tune_%.json | $(MODELS_DIR)/nn
 	$(RUN_AMR) python3 scripts/train_nn.py \
 		--train-features $(FEATURES_DIR)/train_features.csv \
 		--test-features $(FEATURES_DIR)/test_features.csv \
@@ -96,7 +98,7 @@ dnabert:
 $(MODELS_DIR)/dnabert/.done: $(foreach abx,$(ANTIBIOTICS),$(MODELS_DIR)/dnabert/$(abx)_metrics.json) | $(MODELS_DIR)/dnabert
 	@touch $@
 
-$(MODELS_DIR)/dnabert/%_metrics.json: $(SEQUENCES_DIR)/train_sequences.csv $(SEQUENCES_DIR)/test_sequences.csv scripts/train_dnabert.py | $(MODELS_DIR)/dnabert
+$(MODELS_DIR)/dnabert/%_metrics.json: $(SEQUENCES_DIR)/train_sequences.csv $(SEQUENCES_DIR)/test_sequences.csv scripts/train_dnabert.py scripts/common.py | $(MODELS_DIR)/dnabert
 	$(RUN_AMR) python3 scripts/train_dnabert.py \
 		--train-features $(SEQUENCES_DIR)/train_sequences.csv \
 		--test-features $(SEQUENCES_DIR)/test_sequences.csv \

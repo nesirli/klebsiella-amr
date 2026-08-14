@@ -1,11 +1,4 @@
 #!/usr/bin/env python3
-# torch defaults to the CPU wheel (lean local runs, and the reproducible build
-# the planted-signal test is calibrated on -- the CUDA build's CPU kernels
-# train measurably differently). The GPU Spot CE needs the CUDA wheel instead;
-# the awsbatch profile flips it WITHOUT editing this file by overriding this
-# named index's URL on the uv command line (uv run --index pytorch=<cuXX url>),
-# see train_dnabert.nf + the torch_index param. force_pytorch_attention() then
-# keeps DNABERT off its CUDA-only Triton kernel on both CPU and GPU.
 """Fine-tune DNABERT-2 on AMR-gene nucleotide sequences, per antibiotic.
 
 Unlike the tabular models (which see a 0/1 gene presence matrix), this reads
@@ -26,33 +19,16 @@ re-encoding.
 NOTE this is DNABERT-2, which tokenizes with BPE (not the k-mer scheme of
 DNABERT-1); DNABERT-2's whole contribution was replacing k-mers with BPE.
 
-Produces the same 6 artifacts as the other models: saved model (classifier
-head + schema), hyperparameters, test predictions, metrics, and gene-level
-occlusion feature importance (CSV + PNG). Runs on CPU or CUDA.
+Produces the same six artifacts as the other models. Runs on CPU or CUDA; the
+environment installs the CPU torch wheel, and force_pytorch_attention() keeps
+DNABERT off its CUDA-only Triton kernel either way.
 """
-import argparse
-import json
-from pathlib import Path
-
-import matplotlib
-
-matplotlib.use("Agg")
-import matplotlib.pyplot as plt
 import numpy as np
-import pandas as pd
 import torch
 import torch.nn as nn
-from sklearn.metrics import (
-    accuracy_score,
-    average_precision_score,
-    balanced_accuracy_score,
-    confusion_matrix,
-    f1_score,
-    precision_score,
-    recall_score,
-    roc_auc_score,
-)
 from transformers import AutoModel, AutoTokenizer
+
+import common
 
 MODEL_NAME = "dnabert"
 BASE_MODEL = "zhihan1996/DNABERT-2-117M"
@@ -69,13 +45,14 @@ def force_pytorch_attention():
 
     bert_layers.py picks the flash kernel unless its module-global
     `flash_attn_qkvpacked_func` is None (the "Triton unavailable" state). That
-    kernel asserts CUDA tensors, so it crashes on CPU -- and the CUDA-build
-    torch we install (needed for the GPU CE) pulls triton in, which would
-    otherwise select it. Nulling the global forces the PyTorch path, which
-    runs on both CPU and GPU. Done after model load; the class reads the
-    global at forward time. No-op if the model version doesn't expose it.
+    kernel asserts CUDA tensors, so it crashes on CPU -- and a CUDA torch build
+    pulls triton in, which would otherwise select it. Nulling the global forces
+    the PyTorch path, which runs on both CPU and GPU. Done after model load;
+    the class reads the global at forward time. No-op if the model version
+    doesn't expose it.
     """
     import sys
+
     for name, mod in list(sys.modules.items()):
         if name.endswith("bert_layers") and hasattr(mod, "flash_attn_qkvpacked_func"):
             mod.flash_attn_qkvpacked_func = None
@@ -96,24 +73,21 @@ class DNABertGeneClassifier(nn.Module):
         return (hidden * mask).sum(1) / mask.sum(1).clamp(min=1.0)
 
 
-def gene_columns(df, all_antibiotics):
-    non_gene = {"run", "collection_date", "year", "location", *all_antibiotics}
-    return [c for c in df.columns if c not in non_gene]
-
-
 def sample_gene_lists(df, genes):
     """Per sample, the list of (gene, sequence) for its present genes."""
     sub = df[genes].fillna("").astype(str)
-    out = []
-    for row in sub.to_numpy():
-        out.append([(genes[j], s) for j, s in enumerate(row) if s])
-    return out
+    return [[(genes[j], s) for j, s in enumerate(row) if s] for row in sub.to_numpy()]
 
 
-def load_xy(csv_path, antibiotic, genes):
-    df = pd.read_csv(csv_path, dtype={g: str for g in genes}).dropna(subset=[antibiotic])
-    y = (df[antibiotic] == "R").astype(int).values
-    return df.reset_index(drop=True), y
+def flatten(gene_lists):
+    """Flatten per-sample gene lists into parallel (text, sample_idx) arrays.
+    Samples with no genes get one empty-string entry so they still pool."""
+    texts, sample_idx = [], []
+    for s, glist in enumerate(gene_lists):
+        for _, seq in glist or [(None, "")]:
+            texts.append(seq)
+            sample_idx.append(s)
+    return texts, sample_idx
 
 
 def encode_texts(model, tokenizer, texts, max_length, batch_size, grad):
@@ -138,25 +112,10 @@ def pool_samples(embeds, sample_idx, n_samples, hidden_size):
     return pooled / counts.clamp(min=1.0).unsqueeze(1)
 
 
-def flatten(gene_lists):
-    """Flatten per-sample gene lists into parallel (text, sample_idx) arrays.
-    Samples with no genes get one empty-string entry so they still pool."""
-    texts, sample_idx = [], []
-    for s, glist in enumerate(gene_lists):
-        if glist:
-            for _, seq in glist:
-                texts.append(seq)
-                sample_idx.append(s)
-        else:
-            texts.append("")
-            sample_idx.append(s)
-    return texts, sample_idx
-
-
-def train(model, tokenizer, gene_lists, y, hp, class_weights):
+def train(model, tokenizer, gene_lists, y, hp, weights):
     opt = torch.optim.AdamW(model.parameters(), lr=hp["learning_rate"],
                             weight_decay=hp["weight_decay"])
-    criterion = nn.CrossEntropyLoss(weight=class_weights.to(DEVICE))
+    criterion = nn.CrossEntropyLoss(weight=weights.to(DEVICE))
     hidden = model.head.in_features
     n, bs = len(gene_lists), min(hp["batch_size"], len(gene_lists))
     yt = torch.tensor(y)
@@ -195,36 +154,60 @@ def proba_from_pooled(model, pooled):
     return torch.softmax(model.head(pooled), dim=1)[:, 1].cpu().numpy()
 
 
+@torch.no_grad()
+def occlusion_importance(model, emb_per_sample, gene_of, genes, y_proba):
+    """For each gene: among samples where present, drop it from the pooled mean
+    and measure the mean fall in P(R). Only the head re-runs -- exact & cheap."""
+    contrib = {g: [] for g in genes}
+    for s, (embs, names) in enumerate(zip(emb_per_sample, gene_of)):
+        if sum(g is not None for g in names) <= 1:
+            continue  # removing the only gene leaves nothing to compare
+        for k, g in enumerate(names):
+            if g is None:
+                continue
+            keep = torch.cat([embs[:k], embs[k + 1:]], dim=0).mean(0, keepdim=True)
+            contrib[g].append(y_proba[s] - proba_from_pooled(model, keep.to(DEVICE))[0])
+    return [float(np.mean(contrib[g])) if contrib[g] else 0.0 for g in genes]
+
+
+def parse_args():
+    p = common.train_parser("Fine-tune DNABERT-2 per antibiotic")
+    # Light-touch knobs. Defaults are sized for real data, where a sample can
+    # carry ~20 genes of up to ~3 kb: a full-batch encode of every gene with
+    # gradients would OOM, so keep samples/step small and cap per-gene length
+    # (long genes truncate WITHIN the gene -- far better than dropping whole
+    # genes as concatenation would).
+    p.add_argument("--epochs", type=int, default=6)
+    p.add_argument("--batch-size", type=int, default=2, help="samples per step")
+    p.add_argument("--encode-batch", type=int, default=8, help="gene seqs per encoder forward")
+    p.add_argument("--max-length", type=int, default=128,
+                   help="BPE tokens/gene (~4-5 bp each); caps CPU memory on long genes")
+    p.add_argument("--learning-rate", type=float, default=2e-5)
+    return p.parse_args()
+
+
 def main():
     args = parse_args()
-    for out in (args.model_output, args.params_output, args.metrics_output,
-                args.predictions_output, args.importance_output, args.importance_plot_output):
-        Path(out).parent.mkdir(parents=True, exist_ok=True)
+    common.prepare_outputs(args)
 
     hp = {"epochs": args.epochs, "batch_size": args.batch_size,
           "encode_batch": args.encode_batch, "max_length": args.max_length,
           "learning_rate": args.learning_rate, "weight_decay": 1e-2,
           "base_model": BASE_MODEL}
 
-    genes = gene_columns(pd.read_csv(args.train_features, nrows=0), args.all_antibiotics)
-    train_df, y_train = load_xy(args.train_features, args.antibiotic, genes)
-    test_df, y_test = load_xy(args.test_features, args.antibiotic, genes)
+    genes = common.read_genes(args.train_features, args.all_antibiotics)
+    str_genes = {g: str for g in genes}
+    train_df = common.load_labelled(args.train_features, args.antibiotic, dtype=str_genes)
+    test_df = common.load_labelled(args.test_features, args.antibiotic, dtype=str_genes)
+    y_train = (train_df[args.antibiotic] == "R").astype(int).to_numpy()
+    y_test = (test_df[args.antibiotic] == "R").astype(int).to_numpy()
 
     base = {"model": MODEL_NAME, "antibiotic": args.antibiotic,
             "n_train": int(len(train_df)), "n_test": int(len(test_df)),
             "n_features": len(genes), "device": DEVICE.type}
 
-    if len(train_df) < 2 or len(test_df) == 0 or len(np.unique(y_train)) < 2:
-        base["skipped"] = ("need both R and S (>=2) in train and >=1 test sample "
-                           "(not enough labeled data for this antibiotic)")
-        Path(args.model_output).write_bytes(b"")
-        json.dump(base, open(args.params_output, "w"), indent=2)
-        json.dump(base, open(args.metrics_output, "w"), indent=2)
-        pd.DataFrame(columns=["run", "actual", "predicted", "probability_resistant"]
-                     ).to_csv(args.predictions_output, index=False)
-        pd.DataFrame(columns=["gene", "importance"]).to_csv(args.importance_output, index=False)
-        placeholder_png(args.importance_plot_output, f"{args.antibiotic} ({MODEL_NAME}): skipped\n{base['skipped']}")
-        print(json.dumps(base, indent=2))
+    if not common.enough_to_fit(y_train, len(test_df), min_train=2):
+        common.write_skipped(args, base, MODEL_NAME)
         return
 
     train_lists = sample_gene_lists(train_df, genes)
@@ -246,10 +229,7 @@ def main():
 
     n_pos = int(y_train.sum())
     n_neg = int(len(y_train) - n_pos)
-    class_weights = torch.tensor([len(y_train) / (2 * max(n_neg, 1)),
-                                  len(y_train) / (2 * max(n_pos, 1))], dtype=torch.float32)
-
-    train(model, tokenizer, train_lists, y_train, hp, class_weights)
+    train(model, tokenizer, train_lists, y_train, hp, common.class_weights(y_train))
 
     # Save the *full* fine-tuned model (encoder + head) so the tuned DNABERT-2
     # weights are preserved for inference. This is ~450 MB per antibiotic because
@@ -258,9 +238,9 @@ def main():
     torch.save({"model_state_dict": model.state_dict(), "genes": genes,
                 "hyperparameters": hp, "base_model": BASE_MODEL,
                 "hidden_size": hidden_size}, args.model_output)
-    json.dump({**base, "hyperparameters": hp,
-               "train_class_balance": {"R": n_pos, "S": n_neg}},
-              open(args.params_output, "w"), indent=2)
+    common.write_json(args.params_output,
+                      {**base, "hyperparameters": hp,
+                       "train_class_balance": {"R": n_pos, "S": n_neg}})
 
     # Test predictions from mean-pooled gene embeddings.
     model.eval()
@@ -269,89 +249,17 @@ def main():
     y_proba = proba_from_pooled(model, pooled)
     y_pred = (y_proba >= 0.5).astype(int)
 
-    cm = confusion_matrix(y_test, y_pred, labels=[0, 1])
-    tn, fp, fn, tp = cm.ravel()
-    metrics = {**base,
-               "accuracy": accuracy_score(y_test, y_pred),
-               "balanced_accuracy": balanced_accuracy_score(y_test, y_pred),
-               "f1": f1_score(y_test, y_pred, zero_division=0),
-               "precision": precision_score(y_test, y_pred, zero_division=0),
-               "recall": recall_score(y_test, y_pred, zero_division=0),
-               "roc_auc": roc_auc_score(y_test, y_proba) if len(np.unique(y_test)) > 1 else None,
-               "pr_auc": average_precision_score(y_test, y_proba) if len(np.unique(y_test)) > 1 else None,
-               "confusion_matrix": {"tn": int(tn), "fp": int(fp), "fn": int(fn), "tp": int(tp)}}
-    json.dump(metrics, open(args.metrics_output, "w"), indent=2)
-    pd.DataFrame({"run": test_df["run"], "actual": y_test,
-                  "predicted": y_pred, "probability_resistant": y_proba}
-                 ).to_csv(args.predictions_output, index=False)
+    metrics = common.compute_metrics(base, y_test, y_pred, y_proba)
+    common.write_json(args.metrics_output, metrics)
+    common.write_predictions(args.predictions_output, test_df["run"], y_test, y_pred, y_proba)
 
-    importance = occlusion_importance(model, emb_per_sample, gene_of, genes, y_proba, hidden_size)
-    importance.to_csv(args.importance_output, index=False)
+    drops = occlusion_importance(model, emb_per_sample, gene_of, genes, y_proba)
+    importance = common.write_importance(args.importance_output, genes, drops)
+    common.importance_plot(args.importance_plot_output, importance,
+                           f"{args.antibiotic} ({MODEL_NAME}) feature importance",
+                           "occlusion importance (drop in test P(R) when gene removed)")
 
-    top = importance.head(20)
-    fig, ax = plt.subplots(figsize=(8, 6))
-    ax.barh(top["gene"][::-1], top["importance"][::-1])
-    ax.set_xlabel("occlusion importance (drop in test P(R) when gene removed)")
-    ax.set_title(f"{args.antibiotic} ({MODEL_NAME}) feature importance")
-    fig.savefig(args.importance_plot_output, dpi=150, bbox_inches="tight")
-    plt.close(fig)
-
-    print(json.dumps(metrics, indent=2))
-
-
-@torch.no_grad()
-def occlusion_importance(model, emb_per_sample, gene_of, genes, y_proba, hidden_size):
-    """For each gene: among samples where present, drop it from the pooled mean
-    and measure the mean fall in P(R). Only the head re-runs -- exact & cheap."""
-    contrib = {g: [] for g in genes}
-    for s, (embs, names) in enumerate(zip(emb_per_sample, gene_of)):
-        present = [g for g in names if g is not None]
-        if len(present) <= 1:
-            continue  # removing the only gene leaves nothing to compare
-        for k, g in enumerate(names):
-            if g is None:
-                continue
-            keep = torch.cat([embs[:k], embs[k + 1:]], dim=0).mean(0, keepdim=True)
-            occ_proba = proba_from_pooled(model, keep.to(DEVICE))[0]
-            contrib[g].append(y_proba[s] - occ_proba)
-    drops = [float(np.mean(contrib[g])) if contrib[g] else 0.0 for g in genes]
-    return (pd.DataFrame({"gene": genes, "importance": drops})
-            .sort_values("importance", ascending=False).reset_index(drop=True))
-
-
-def placeholder_png(path, text):
-    fig, ax = plt.subplots(figsize=(6, 2))
-    ax.text(0.5, 0.5, text, ha="center", va="center", wrap=True)
-    ax.axis("off")
-    fig.savefig(path, dpi=150, bbox_inches="tight")
-    plt.close(fig)
-
-
-def parse_args():
-    p = argparse.ArgumentParser(description="Fine-tune DNABERT-2 per antibiotic")
-    p.add_argument("--train-features", required=True)
-    p.add_argument("--test-features", required=True)
-    p.add_argument("--antibiotic", required=True)
-    p.add_argument("--all-antibiotics", nargs="+", required=True)
-    p.add_argument("--model-output", required=True)
-    p.add_argument("--params-output", required=True)
-    p.add_argument("--metrics-output", required=True)
-    p.add_argument("--predictions-output", required=True)
-    p.add_argument("--importance-output", required=True)
-    p.add_argument("--importance-plot-output", required=True)
-    # Light-touch knobs. Defaults are sized for real data, where a sample can
-    # carry ~20 genes of up to ~3 kb: a full-batch encode of every gene with
-    # gradients would OOM, so keep samples/step small and cap per-gene length
-    # (long genes truncate WITHIN the gene -- far better than dropping whole
-    # genes as concatenation would). The test harness dials these up (short
-    # synthetic genes) for a stronger fit.
-    p.add_argument("--epochs", type=int, default=6)
-    p.add_argument("--batch-size", type=int, default=2, help="samples per step")
-    p.add_argument("--encode-batch", type=int, default=8, help="gene seqs per encoder forward")
-    p.add_argument("--max-length", type=int, default=128,
-                   help="BPE tokens/gene (~4-5 bp each); caps CPU memory on long genes")
-    p.add_argument("--learning-rate", type=float, default=2e-5)
-    return p.parse_args()
+    common.print_json(metrics)
 
 
 if __name__ == "__main__":

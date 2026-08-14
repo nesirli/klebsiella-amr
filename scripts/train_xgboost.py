@@ -1,168 +1,82 @@
 #!/usr/bin/env python3
 """Train + test + interpret one XGBoost resistance classifier per antibiotic.
 
-Self-contained per-model script (matches the pipeline's one-script-per-model
-layout). Produces: saved model, hyperparameters, test predictions, metrics,
-and SHAP feature importance (CSV + summary plot PNG).
+Importance is mean |SHAP| over the training rows (TreeExplainer: exact and
+cheap for trees), reported alongside the standard SHAP beeswarm plot.
 """
-import argparse
-import json
-from pathlib import Path
-
-import matplotlib
-
-matplotlib.use("Agg")
-import matplotlib.pyplot as plt
 import numpy as np
-import pandas as pd
 import shap
-from sklearn.metrics import (
-    accuracy_score,
-    average_precision_score,
-    balanced_accuracy_score,
-    confusion_matrix,
-    f1_score,
-    precision_score,
-    recall_score,
-    roc_auc_score,
-)
 from xgboost import XGBClassifier
+
+import common
+from common import plt
 
 MODEL_NAME = "xgboost"
 
-
-def gene_columns(df, all_antibiotics):
-    non_gene = {"run", "collection_date", "year", "location", *all_antibiotics}
-    return [c for c in df.columns if c not in non_gene]
-
-
-def load_xy(csv_path, antibiotic, genes):
-    df = pd.read_csv(csv_path).dropna(subset=[antibiotic])
-    y = (df[antibiotic] == "R").astype(int)
-    x = df[genes].fillna(0)
-    return x, y, df["run"]
-
-
-def placeholder_png(path, text):
-    fig, ax = plt.subplots(figsize=(6, 2))
-    ax.text(0.5, 0.5, text, ha="center", va="center", wrap=True)
-    ax.axis("off")
-    fig.savefig(path, dpi=150, bbox_inches="tight")
-    plt.close(fig)
-
-
-def parse_args():
-    p = argparse.ArgumentParser(description="Train an XGBoost resistance model")
-    p.add_argument("--train-features", required=True)
-    p.add_argument("--test-features", required=True)
-    p.add_argument("--antibiotic", required=True)
-    p.add_argument("--all-antibiotics", nargs="+", required=True)
-    p.add_argument("--model-output", required=True)
-    p.add_argument("--params-output", required=True)
-    p.add_argument("--metrics-output", required=True)
-    p.add_argument("--predictions-output", required=True)
-    p.add_argument("--importance-output", required=True)
-    p.add_argument("--shap-plot-output", required=True)
-    p.add_argument("--params-input", help="Optional JSON with hyperparameters to override defaults")
-    return p.parse_args()
+DEFAULTS = {
+    "objective": "binary:logistic",
+    "eval_metric": ["logloss", "auc"],
+    "n_estimators": 200,
+    "max_depth": 4,
+    "learning_rate": 0.1,
+    "subsample": 0.8,
+    "colsample_bytree": 0.8,
+    "min_child_weight": 1,
+    "max_delta_step": 1,
+    "reg_alpha": 0.1,
+    "reg_lambda": 0.1,
+    "base_score": 0.5,
+    "random_state": 42,
+}
 
 
 def main():
-    args = parse_args()
-    for out in (args.model_output, args.params_output, args.metrics_output,
-                args.predictions_output, args.importance_output, args.shap_plot_output):
-        Path(out).parent.mkdir(parents=True, exist_ok=True)
+    args = common.train_parser("Train an XGBoost resistance model").parse_args()
+    common.prepare_outputs(args)
 
-    genes = gene_columns(pd.read_csv(args.train_features), args.all_antibiotics)
-    x_train, y_train, _ = load_xy(args.train_features, args.antibiotic, genes)
-    x_test, y_test, test_runs = load_xy(args.test_features, args.antibiotic, genes)
+    genes = common.read_genes(args.train_features, args.all_antibiotics)
+    x_train, y_train, _ = common.load_xy(args.train_features, args.antibiotic, genes)
+    x_test, y_test, test_runs = common.load_xy(args.test_features, args.antibiotic, genes)
 
     base = {"model": MODEL_NAME, "antibiotic": args.antibiotic,
             "n_train": int(len(x_train)), "n_test": int(len(x_test)),
             "n_features": len(genes)}
 
-    # Not enough signal to fit a real model -> emit well-formed empty artifacts.
-    if len(x_train) == 0 or len(x_test) == 0 or y_train.nunique() < 2:
-        base["skipped"] = ("need both R and S in train and >=1 test sample "
-                           "(not enough labeled data for this antibiotic)")
-        Path(args.model_output).write_bytes(b"")
-        json.dump(base, open(args.params_output, "w"), indent=2)
-        json.dump(base, open(args.metrics_output, "w"), indent=2)
-        pd.DataFrame(columns=["run", "actual", "predicted", "probability_resistant"]
-                     ).to_csv(args.predictions_output, index=False)
-        pd.DataFrame(columns=["gene", "mean_abs_shap"]).to_csv(args.importance_output, index=False)
-        placeholder_png(args.shap_plot_output, f"{args.antibiotic} ({MODEL_NAME}): skipped\n{base['skipped']}")
-        print(json.dumps(base, indent=2))
+    if not common.enough_to_fit(y_train, len(x_test)):
+        common.write_skipped(args, base, MODEL_NAME)
         return
 
-    # Handle class imbalance via scale_pos_weight = n_negative / n_positive.
     n_pos = int(y_train.sum())
     n_neg = int(len(y_train) - n_pos)
-    scale_pos_weight = (n_neg / n_pos) if n_pos else 1.0
 
-    hyperparams = {
-        "objective": "binary:logistic",
-        "eval_metric": ["logloss", "auc"],
-        "n_estimators": 200,
-        "max_depth": 4,
-        "learning_rate": 0.1,
-        "subsample": 0.8,
-        "colsample_bytree": 0.8,
-        "min_child_weight": 1,
-        "max_delta_step": 1,
-        "reg_alpha": 0.1,
-        "reg_lambda": 0.1,
-        "scale_pos_weight": scale_pos_weight,
-        "base_score": 0.5,
-        "random_state": 42,
-    }
-    if args.params_input:
-        with open(args.params_input) as f:
-            tuned = json.load(f)
-        # Scale pos weight is data-dependent; keep the computed value unless
-        # the tuning run explicitly provided one.
-        tuned.pop("scale_pos_weight", None)
-        hyperparams.update(tuned)
+    # Class imbalance: scale_pos_weight is data-dependent, so it is computed
+    # here rather than searched, and a tuned value would override it.
+    hyperparams = {**DEFAULTS, "scale_pos_weight": (n_neg / n_pos) if n_pos else 1.0}
+    hyperparams.update(common.load_tuned(args.params_input))
+
     model = XGBClassifier(**hyperparams)
     model.fit(x_train, y_train)
     model.get_booster().save_model(args.model_output)
+    common.write_json(args.params_output,
+                      {**base, "hyperparameters": hyperparams,
+                       "train_class_balance": {"R": n_pos, "S": n_neg}})
 
-    params = {**base, "hyperparameters": hyperparams,
-              "train_class_balance": {"R": n_pos, "S": n_neg}}
-    json.dump(params, open(args.params_output, "w"), indent=2)
-
-    y_pred = model.predict(x_test)
     y_proba = model.predict_proba(x_test)[:, 1]
-    cm = confusion_matrix(y_test, y_pred, labels=[0, 1])
-    tn, fp, fn, tp = cm.ravel()
-    metrics = {**base,
-               "accuracy": accuracy_score(y_test, y_pred),
-               "balanced_accuracy": balanced_accuracy_score(y_test, y_pred),
-               "f1": f1_score(y_test, y_pred, zero_division=0),
-               "precision": precision_score(y_test, y_pred, zero_division=0),
-               "recall": recall_score(y_test, y_pred, zero_division=0),
-               "roc_auc": roc_auc_score(y_test, y_proba) if y_test.nunique() > 1 else None,
-               "pr_auc": average_precision_score(y_test, y_proba) if y_test.nunique() > 1 else None,
-               "confusion_matrix": {"tn": int(tn), "fp": int(fp), "fn": int(fn), "tp": int(tp)}}
-    json.dump(metrics, open(args.metrics_output, "w"), indent=2)
-    pd.DataFrame({"run": test_runs, "actual": y_test.values,
-                  "predicted": y_pred, "probability_resistant": y_proba}
-                 ).to_csv(args.predictions_output, index=False)
+    y_pred = model.predict(x_test)
+    metrics = common.compute_metrics(base, y_test, y_pred, y_proba)
+    common.write_json(args.metrics_output, metrics)
+    common.write_predictions(args.predictions_output, test_runs, y_test, y_pred, y_proba)
 
-    # SHAP (TreeExplainer: exact + cheap for trees) importance + summary plot.
-    explainer = shap.TreeExplainer(model)
-    shap_values = np.asarray(explainer.shap_values(x_train))
-    importance = (pd.DataFrame({"gene": genes,
-                                "mean_abs_shap": np.abs(shap_values).mean(axis=0)})
-                  .sort_values("mean_abs_shap", ascending=False).reset_index(drop=True))
-    importance.to_csv(args.importance_output, index=False)
+    shap_values = np.asarray(shap.TreeExplainer(model).shap_values(x_train))
+    common.write_importance(args.importance_output, genes,
+                            np.abs(shap_values).mean(axis=0))
 
     shap.summary_plot(shap_values, x_train, show=False, max_display=20)
     plt.title(f"{args.antibiotic} ({MODEL_NAME}) SHAP")
-    plt.savefig(args.shap_plot_output, dpi=150, bbox_inches="tight")
+    plt.savefig(args.importance_plot_output, dpi=150, bbox_inches="tight")
     plt.close()
 
-    print(json.dumps(metrics, indent=2))
+    common.print_json(metrics)
 
 
 if __name__ == "__main__":
