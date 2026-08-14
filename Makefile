@@ -85,7 +85,7 @@ $(MULTIQC_DIR) $(REPORT_DIR):
 
 # Phony targets ----------------------------------------------------------------
 .PHONY: all setup test metadata models dnabert multiqc report clean \
-        tune process-samples _process-samples analyze
+        tune process-samples _process-samples _process-one analyze
 
 all:
 	@if [ -z "$(SAMPLES)" ]; then \

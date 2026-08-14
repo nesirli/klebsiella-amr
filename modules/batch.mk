@@ -4,45 +4,57 @@
 # BATCH_SIZE controls both download and processing concurrency. At most
 # BATCH_SIZE samples' worth of intermediate data ever exists on disk.
 
+# Retiring a sample removes every intermediate it owns, INCLUDING its fastp
+# JSON. SAMPLES_ACTIVE is derived from those JSONs, so a sample that could not
+# be downloaded or processed drops out of the run entirely. Leaving the JSON
+# behind would keep the sample in SAMPLES_ACTIVE, and the analyze phase would
+# then demand its quast report and walk all the way back to re-downloading
+# reads this recipe had just deleted -- failing the whole run over one bad
+# sample. Assemblies are deliberately kept elsewhere, but a half-written one
+# from a crashed SPAdes is not worth keeping.
+define retire-sample
+rm -rf $(QUAST_DIR)/$$s $(ASSEMBLY_DIR)/$${s}_tmp; \
+rm -f $(READS_DIR)/$${s}_1.fastq.gz $(READS_DIR)/$${s}_2.fastq.gz \
+      $(TRIMMED_DIR)/$${s}_1.fastq.gz $(TRIMMED_DIR)/$${s}_2.fastq.gz \
+      $(DOWNSAMPLED_DIR)/$${s}_1.fastq.gz $(DOWNSAMPLED_DIR)/$${s}_2.fastq.gz \
+      $(QC_DIR)/$${s}_fastp.json $(QC_DIR)/$${s}_fastp.html \
+      $(KRAKEN_DIR)/$${s}_report.txt \
+      $(AMR_DIR)/$${s}_amr.tsv $(AMR_DIR)/$${s}_amr_genes.fna
+endef
+
 _process-samples:
 	@echo "Processing $(words $(SAMPLES)) samples ($(BATCH_SIZE) at a time)..."
 	@batch=0; \
 	for sample in $(SAMPLES); do \
-		( \
-			sample=$$sample; \
-			if [ -f $(READS_DIR)/$${sample}.skip ]; then \
-				mkdir -p $(CLEAN_DIR); \
-				touch $(CLEAN_DIR)/$${sample}_cleaned; \
-				echo "$$sample: SKIPPED"; \
-			else \
-				{ [ -f $(READS_DIR)/$${sample}_1.fastq.gz ] || \
-				  $(MAKE) --no-print-directory $(READS_DIR)/$${sample}_1.fastq.gz 2>&1; } || true; \
-				if [ -f $(READS_DIR)/$${sample}.skip ]; then \
-					mkdir -p $(CLEAN_DIR); \
-					touch $(CLEAN_DIR)/$${sample}_cleaned; \
-					echo "$$sample: SKIPPED"; \
-				elif [ -f $(READS_DIR)/$${sample}_1.fastq.gz ]; then \
-					echo "=== $$sample ==="; \
-					if $(MAKE) --no-print-directory $(CLEAN_DIR)/$${sample}_cleaned; then \
-						echo "$$sample: OK"; \
-					else \
-						echo "$$sample: FAILED"; \
-						rm -f $(READS_DIR)/$${sample}_1.fastq.gz $(READS_DIR)/$${sample}_2.fastq.gz; \
-						mkdir -p $(CLEAN_DIR); \
-						touch $(CLEAN_DIR)/$${sample}_cleaned; \
-					fi; \
-				else \
-					mkdir -p $(CLEAN_DIR); \
-					touch $(CLEAN_DIR)/$${sample}_cleaned; \
-					echo "$$sample: DOWNLOAD FAILED"; \
-				fi; \
-			fi \
-		) & \
+		$(MAKE) --no-print-directory _process-one SAMPLE=$$sample & \
 		batch=$$((batch + 1)); \
 		if [ $$batch -ge $(BATCH_SIZE) ]; then wait; batch=0; fi; \
 	done; \
-	wait; \
-	true
+	wait
+
+# One sample, download through cleanup. Always exits 0: a sample that cannot be
+# fetched or processed is retired rather than failing the batch, so one bad
+# accession out of thousands does not sink the run.
+_process-one:
+	@s='$(SAMPLE)'; \
+	if [ -f $(READS_DIR)/$$s.skip ]; then \
+		echo "$$s: SKIPPED"; exit 0; \
+	fi; \
+	if [ ! -f $(READS_DIR)/$${s}_1.fastq.gz ]; then \
+		$(MAKE) --no-print-directory $(READS_DIR)/$${s}_1.fastq.gz 2>&1 || true; \
+	fi; \
+	if [ -f $(READS_DIR)/$$s.skip ]; then \
+		echo "$$s: SKIPPED"; exit 0; \
+	fi; \
+	if [ ! -f $(READS_DIR)/$${s}_1.fastq.gz ]; then \
+		echo "$$s: DOWNLOAD FAILED"; $(retire-sample); exit 0; \
+	fi; \
+	echo "=== $$s ==="; \
+	if $(MAKE) --no-print-directory $(CLEAN_DIR)/$${s}_cleaned; then \
+		echo "$$s: OK"; \
+	else \
+		echo "$$s: FAILED"; $(retire-sample); \
+	fi
 
 process-samples:
 	@if [ -z "$(SAMPLES)" ]; then \
