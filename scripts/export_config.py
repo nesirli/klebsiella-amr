@@ -20,6 +20,7 @@ def main():
         f"ANTIBIOTICS := {' '.join(c['antibiotics'])}",
         f"TRAIN_CUTOFF := {c['splits']['train_cutoff']}",
         f"TEST_YEARS := {' '.join(map(str, c['splits']['test_years']))}",
+        f"MAX_SAMPLES := {c.get('max_samples', -1)}",
         f"GENOME_SIZE := {c['genome']['size']}",
         f"TARGET_COVERAGE := {c['genome']['target_coverage']}",
         f"KRAKEN_DB := {c['reference']['kraken2_db']}",

@@ -13,3 +13,6 @@ __pycache__/
 # OS
 .DS_Store
 results/multiqc/multiqc_report_data/
+
+# Local build state: records the MAX_SAMPLES the split was last built with
+results/metadata/.max-samples

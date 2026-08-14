@@ -27,7 +27,10 @@ RUN_AMR     := conda run --no-capture-output -n amr
 RUN_BIOINFO := conda run --no-capture-output -n bioinfo
 
 # Settings ---------------------------------------------------------------------
-MAX_SAMPLES    := -1
+# MAX_SAMPLES comes from config.yaml via the include above; '?=' leaves that
+# value alone and only supplies a default when config.mk has not been built
+# yet. A command-line MAX_SAMPLES=N overrides both.
+MAX_SAMPLES    ?= -1
 BATCH_SIZE     ?= 1
 
 TUNE_TRIALS_XGB := 30
