@@ -56,6 +56,28 @@ SEQUENCES_DIR   := $(RESULTS_DIR)/sequences
 MODELS_DIR      := $(RESULTS_DIR)/models
 REPORT_DIR      := $(RESULTS_DIR)/report
 
+# Sample-list bootstrap --------------------------------------------------------
+# The pipeline targets need SAMPLES, which is defined by the generated
+# samples.mk included above. When it has not been built yet the variable is
+# empty, so those targets build the metadata first and re-enter make to pick up
+# the include. BOOTSTRAPPED marks the second pass: if SAMPLES is still empty
+# there, the split genuinely produced nothing and we stop instead of recursing
+# forever. Command-line variables propagate to sub-makes automatically.
+#
+# Usage: $(call need-samples,<real targets to build>)
+define need-samples
+@if [ -n "$(SAMPLES)" ]; then \
+	$(MAKE) --no-print-directory $(1); \
+elif [ -n "$(BOOTSTRAPPED)" ]; then \
+	echo "error: no samples after 'make metadata' -- check that $(METADATA) has" >&2; \
+	echo "       rows matching the train/test years in config.yaml" >&2; \
+	exit 1; \
+else \
+	$(MAKE) --no-print-directory metadata && \
+	$(MAKE) --no-print-directory $@ BOOTSTRAPPED=1; \
+fi
+endef
+
 # Pipeline modules -------------------------------------------------------------
 include modules/config.mk
 include modules/metadata.mk
@@ -84,16 +106,11 @@ $(MULTIQC_DIR) $(REPORT_DIR):
 	mkdir -p $@
 
 # Phony targets ----------------------------------------------------------------
-.PHONY: all setup test metadata models dnabert multiqc report clean \
+.PHONY: all setup test metadata models dnabert multiqc report _report clean force \
         tune process-samples _process-samples _process-one analyze
 
 all:
-	@if [ -z "$(SAMPLES)" ]; then \
-		$(MAKE) --no-print-directory metadata MAX_SAMPLES=$(MAX_SAMPLES) && \
-		$(MAKE) --no-print-directory all MAX_SAMPLES=$(MAX_SAMPLES); \
-	else \
-		$(MAKE) --no-print-directory report; \
-	fi
+	$(call need-samples,report)
 
 setup:
 	mamba env create -f envs/env-ml.yml -n amr

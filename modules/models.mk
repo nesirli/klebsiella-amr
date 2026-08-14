@@ -34,11 +34,7 @@ $(MODELS_DIR)/nn/tune_%.json: $(FEATURES_DIR)/train_features.csv scripts/tune_nn
 
 # Models ----------------------------------------------------------------------
 models:
-	@if [ -z "$(SAMPLES)" ]; then \
-		$(MAKE) --no-print-directory metadata MAX_SAMPLES=$(MAX_SAMPLES) && $(MAKE) --no-print-directory models MAX_SAMPLES=$(MAX_SAMPLES); \
-	else \
-		$(MAKE) --no-print-directory $(MODELS_DIR)/.done; \
-	fi
+	$(call need-samples,$(MODELS_DIR)/.done)
 
 $(MODELS_DIR)/.done: $(foreach abx,$(ANTIBIOTICS),$(MODELS_DIR)/xgboost/$(abx)_metrics.json) \
                      $(foreach abx,$(ANTIBIOTICS),$(MODELS_DIR)/lightgbm/$(abx)_metrics.json) \
@@ -89,11 +85,7 @@ $(MODELS_DIR)/nn/%_metrics.json: $(FEATURES_DIR)/train_features.csv $(FEATURES_D
 
 # DNABERT-2 (optional) --------------------------------------------------------
 dnabert:
-	@if [ -z "$(SAMPLES)" ]; then \
-		$(MAKE) --no-print-directory metadata MAX_SAMPLES=$(MAX_SAMPLES) && $(MAKE) --no-print-directory dnabert MAX_SAMPLES=$(MAX_SAMPLES); \
-	else \
-		$(MAKE) --no-print-directory $(MODELS_DIR)/dnabert/.done; \
-	fi
+	$(call need-samples,$(MODELS_DIR)/dnabert/.done)
 
 $(MODELS_DIR)/dnabert/.done: $(foreach abx,$(ANTIBIOTICS),$(MODELS_DIR)/dnabert/$(abx)_metrics.json) | $(MODELS_DIR)/dnabert
 	@touch $@
