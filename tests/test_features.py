@@ -1,3 +1,4 @@
+import json
 import subprocess
 import sys
 
@@ -65,3 +66,51 @@ def test_build_features_and_xgboost(tmp_path):
 
     metrics = _train("xgboost", "amikacin", train_features, test_features, tmp_path / "xgboost")
     assert "f1" in metrics
+
+
+def test_summarize_collects_every_model_present(tmp_path):
+    """dnabert metrics were dropped by a hardcoded model list that omitted it."""
+    models_dir = tmp_path / "models"
+    for model in ("xgboost", "lightgbm", "nn", "dnabert"):
+        model_dir = models_dir / model
+        model_dir.mkdir(parents=True)
+        (model_dir / "amikacin_metrics.json").write_text(json.dumps({
+            "model": model, "antibiotic": "amikacin", "n_train": 10, "n_test": 5,
+            "f1": 0.5, "roc_auc": 0.75,
+        }))
+        pd.DataFrame({"gene": ["blaKPC-3", "oqxB"], "importance": [0.9, 0.1]}).to_csv(
+            model_dir / "amikacin_importance.csv", index=False)
+
+    out = tmp_path / "summary.json"
+    subprocess.run(
+        [sys.executable, "scripts/summarize.py",
+         "--models-dir", str(models_dir),
+         "--antibiotics", "amikacin",
+         "--output", str(out)],
+        check=True,
+    )
+
+    summary = json.loads(out.read_text())
+    assert summary["models"] == ["xgboost", "lightgbm", "nn", "dnabert"]
+    assert {row["model"] for row in summary["metrics"]} == {"xgboost", "lightgbm", "nn", "dnabert"}
+    assert summary["metrics"][0]["top_features"][0]["gene"] == "blaKPC-3"
+
+
+def test_summarize_omits_models_that_were_not_run(tmp_path):
+    """dnabert is optional; its absence must not fabricate an empty row."""
+    models_dir = tmp_path / "models" / "xgboost"
+    models_dir.mkdir(parents=True)
+    (models_dir / "amikacin_metrics.json").write_text(json.dumps({"f1": 0.5}))
+
+    out = tmp_path / "summary.json"
+    subprocess.run(
+        [sys.executable, "scripts/summarize.py",
+         "--models-dir", str(tmp_path / "models"),
+         "--antibiotics", "amikacin",
+         "--output", str(out)],
+        check=True,
+    )
+
+    summary = json.loads(out.read_text())
+    assert summary["models"] == ["xgboost"]
+    assert len(summary["metrics"]) == 1
