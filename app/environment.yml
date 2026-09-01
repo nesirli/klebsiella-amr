@@ -1,0 +1,17 @@
+# AMRFinderPlus is a bioconda tool that shells out to BLAST+ and HMMER, so the
+# image cannot be built on python-slim + uv the way the other services are.
+# micromamba installs the bioinformatics stack and the Python stack together.
+name: base
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  - python=3.11
+  - ncbi-amrfinderplus=4.2.7
+  - mash
+  - streamlit
+  - pandas
+  - numpy
+  - xgboost
+  - lightgbm
+  - scikit-learn
