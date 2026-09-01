@@ -36,7 +36,16 @@ BASE_MODEL = "zhihan1996/DNABERT-2-117M"
 torch.manual_seed(42)
 np.random.seed(42)
 
-DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+# Apple Silicon's GPU backend runs this encoder about 10x faster than the CPU
+# wheel (0.06s vs 0.67s per 8-gene forward on an M-series laptop), which is the
+# difference between a tunable model and an untunable one. Set
+# PYTORCH_ENABLE_MPS_FALLBACK=1 in the environment so any op MPS lacks drops to
+# CPU instead of aborting the fit.
+DEVICE = torch.device(
+    "cuda" if torch.cuda.is_available()
+    else "mps" if torch.backends.mps.is_available()
+    else "cpu"
+)
 
 
 def force_pytorch_attention():
@@ -190,9 +199,12 @@ def main():
     args = parse_args()
     common.prepare_outputs(args)
 
+    # Tuned values (if tune_dnabert.py ran) override the CLI defaults, matching
+    # the handoff every other model uses; base_model is ours to state either way.
     hp = {"epochs": args.epochs, "batch_size": args.batch_size,
           "encode_batch": args.encode_batch, "max_length": args.max_length,
           "learning_rate": args.learning_rate, "weight_decay": 1e-2,
+          **common.load_tuned(args.params_input),
           "base_model": BASE_MODEL}
 
     genes = common.read_genes(args.train_features, args.all_antibiotics)
@@ -247,9 +259,17 @@ def main():
     emb_per_sample, gene_of = sample_embeddings(model, tokenizer, test_lists, hp)
     pooled = torch.stack([e.mean(0) for e in emb_per_sample]).to(DEVICE)
     y_proba = proba_from_pooled(model, pooled)
-    y_pred = (y_proba >= 0.5).astype(int)
 
-    metrics = common.compute_metrics(base, y_test, y_pred, y_proba)
+    # Re-encoding the training split costs a couple of minutes and is what
+    # makes the threshold honest: it has to come from data the fit already saw.
+    train_emb, _ = sample_embeddings(model, tokenizer, train_lists, hp)
+    proba_train = proba_from_pooled(
+        model, torch.stack([e.mean(0) for e in train_emb]).to(DEVICE))
+    threshold = common.choose_threshold(y_train, proba_train)
+    y_pred = (y_proba >= threshold).astype(int)
+
+    metrics = common.compute_metrics({**base, "threshold": threshold},
+                                     y_test, y_pred, y_proba)
     common.write_json(args.metrics_output, metrics)
     common.write_predictions(args.predictions_output, test_df["run"], y_test, y_pred, y_proba)
 

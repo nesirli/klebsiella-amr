@@ -6,6 +6,7 @@ dependencies:
   # DNABERT-2 is calibrated on Python <3.12 + transformers 4.29.2,
   # so pin the whole ML environment to a compatible interpreter.
   - python=3.11
+  - streamlit
   - numpy<2
   - pandas
   - scikit-learn
