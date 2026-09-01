@@ -13,6 +13,8 @@
 # sample. Assemblies are deliberately kept elsewhere, but a half-written one
 # from a crashed SPAdes is not worth keeping.
 define retire-sample
+mkdir -p $(RESULTS_DIR)/metadata; \
+echo "$$s" >> $(RESULTS_DIR)/metadata/retired.txt; \
 rm -rf $(QUAST_DIR)/$$s $(ASSEMBLY_DIR)/$${s}_tmp; \
 rm -f $(READS_DIR)/$${s}_1.fastq.gz $(READS_DIR)/$${s}_2.fastq.gz \
       $(TRIMMED_DIR)/$${s}_1.fastq.gz $(TRIMMED_DIR)/$${s}_2.fastq.gz \
@@ -37,6 +39,9 @@ _process-samples:
 # accession out of thousands does not sink the run.
 _process-one:
 	@s='$(SAMPLE)'; \
+	if [ -f $(CLEAN_DIR)/$${s}_cleaned ]; then \
+		echo "$$s: OK (already processed)"; exit 0; \
+	fi; \
 	if [ -f $(READS_DIR)/$$s.skip ]; then \
 		echo "$$s: SKIPPED"; exit 0; \
 	fi; \
@@ -63,11 +68,18 @@ process-samples:
 multiqc:
 	$(call need-samples,$(MULTIQC_DIR)/multiqc_report.html)
 
-$(MULTIQC_DIR)/multiqc_report.html: $(QC_DIR)/.done $(KRAKEN_DIR)/.done $(QUAST_DIR)/.done | $(MULTIQC_DIR)
+# Depends on the per-sample cleaned markers, not on $(QC_DIR)/.done and
+# friends. Reaching for a fastp JSON drags in the grouped rule that produced
+# it, and that group also lists the trimmed FASTQs, which per-sample cleanup
+# has deleted -- so make sees an incomplete group and re-runs fastp for every
+# sample. A cleaned marker means QC, Kraken2 and QUAST all finished, which is
+# the same guarantee without touching a grouped target.
+$(MULTIQC_DIR)/multiqc_report.html: $(patsubst %,$(CLEAN_DIR)/%_cleaned,$(SAMPLES_ACTIVE)) | $(MULTIQC_DIR)
 	$(RUN_BIOINFO) multiqc $(QC_DIR) $(KRAKEN_DIR) $(QUAST_DIR) \
 		--outdir $(MULTIQC_DIR) \
 		--filename multiqc_report.html \
 		--force
+	@test -s $@ || { echo "error: multiqc found no analysis results" >&2; exit 1; }
 
 # Post-assembly analysis (features + sequences + models + multiqc + summary) ---
 analyze:

@@ -10,6 +10,12 @@ endif
 
 .DELETE_ON_ERROR:
 
+# Files reached through pattern-rule chains (fastp JSONs, kraken2 reports,
+# AMRFinder TSVs, assemblies) count as intermediate, and make deletes
+# intermediates on exit. .SECONDARY with no prerequisites keeps every one of
+# them; .DELETE_ON_ERROR still removes the target of a failed recipe.
+.SECONDARY:
+
 # Auto-generated includes ------------------------------------------------------
 # Only include generated config if the amr environment exists; otherwise
 # 'make setup' would try to build config.mk before the environment exists.
@@ -33,10 +39,28 @@ RUN_BIOINFO := conda run --no-capture-output -n bioinfo
 MAX_SAMPLES    ?= -1
 BATCH_SIZE     ?= 1
 
+# XGBoost, LightGBM and torch all read OMP_NUM_THREADS and otherwise each
+# claim every core, so under -j the model targets oversubscribe the machine.
+# MODEL_THREADS comes from config.yaml; the default covers the first pass
+# before config.mk has been generated.
+export OMP_NUM_THREADS := $(or $(MODEL_THREADS),4)
+
+# Lets any op the Apple Silicon GPU backend lacks fall back to the CPU rather
+# than aborting a fit. Harmless on machines without MPS.
+export PYTORCH_ENABLE_MPS_FALLBACK := 1
+
 TUNE_TRIALS_XGB := 30
 TUNE_TRIALS_LGB := 30
 TUNE_TRIALS_NN  := 20
 TUNE_SPLITS     := 3
+
+# DNABERT-2 refits a 117M-parameter encoder for every fold of every trial, so
+# a trial costs minutes rather than milliseconds. Its search is deliberately
+# smaller than the others', and runs on a capped subsample (see
+# tune_dnabert.py) to keep the whole thing to hours.
+TUNE_TRIALS_DNABERT := 5
+TUNE_SPLITS_DNABERT := 2
+TUNE_MAX_TRAIN_DNABERT := 120
 
 # Directories ------------------------------------------------------------------
 RESULTS_DIR     := results
@@ -106,7 +130,7 @@ $(MULTIQC_DIR) $(REPORT_DIR):
 	mkdir -p $@
 
 # Phony targets ----------------------------------------------------------------
-.PHONY: all setup test metadata models dnabert multiqc report _report clean force \
+.PHONY: all setup test metadata models dnabert multiqc report _report clean force manifest app app-artifacts \
         tune process-samples _process-samples _process-one analyze
 
 all:

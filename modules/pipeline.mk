@@ -5,7 +5,12 @@ SAMPLES_ACTIVE = $(sort $(patsubst $(QC_DIR)/%_fastp.json,%,$(wildcard $(QC_DIR)
 $(READS_DIR)/.done: $(patsubst %,$(READS_DIR)/%_1.fastq.gz,$(SAMPLES_ACTIVE)) | $(READS_DIR)
 	@touch $@
 
-$(READS_DIR)/%_1.fastq.gz $(READS_DIR)/%_2.fastq.gz &: scripts/download_reads.py | $(READS_DIR)
+# download_reads.py is order-only (after the '|'): reads already on disk are
+# not invalidated by an edit to the downloader. As a normal prerequisite, a
+# one-line fix to the retry logic mid-run marked all 1184 samples out of date
+# and sent the analyze phase back to re-download and re-assemble every one of
+# them. To genuinely refetch a sample, delete its reads.
+$(READS_DIR)/%_1.fastq.gz $(READS_DIR)/%_2.fastq.gz &: | scripts/download_reads.py $(READS_DIR)
 	$(RUN_AMR) python3 scripts/download_reads.py \
 		--accession $* \
 		--out1 $(READS_DIR)/$*_1.fastq.gz \
@@ -16,7 +21,15 @@ $(READS_DIR)/%_1.fastq.gz $(READS_DIR)/%_2.fastq.gz &: scripts/download_reads.py
 $(TRIMMED_DIR)/.done: $(patsubst %,$(QC_DIR)/%_fastp.json,$(SAMPLES_ACTIVE)) | $(TRIMMED_DIR)
 	@touch $@
 
-$(TRIMMED_DIR)/%_1.fastq.gz $(TRIMMED_DIR)/%_2.fastq.gz $(QC_DIR)/%_fastp.json &: $(READS_DIR)/%_1.fastq.gz $(READS_DIR)/%_2.fastq.gz | $(TRIMMED_DIR) $(QC_DIR)
+# Reads, trimmed and downsampled FASTQs are deleted as soon as a sample is
+# done, so they are order-only ('|') throughout: still built when something
+# downstream actually needs building, but their absence no longer invalidates
+# the artifacts we keep. As normal prerequisites make plans to recreate the
+# deleted reads, treats that plan as a brand-new file, and so declares every
+# kept artifact stale -- which sent the analyze phase back to re-assemble all
+# 1181 finished samples. The kept files (fastp JSON, kraken report, assembly,
+# quast report, AMR calls) carry the real dependency timestamps.
+$(TRIMMED_DIR)/%_1.fastq.gz $(TRIMMED_DIR)/%_2.fastq.gz $(QC_DIR)/%_fastp.json &: | $(READS_DIR)/%_1.fastq.gz $(READS_DIR)/%_2.fastq.gz $(TRIMMED_DIR) $(QC_DIR)
 	$(RUN_BIOINFO) fastp \
 		--in1 $(READS_DIR)/$*_1.fastq.gz \
 		--in2 $(READS_DIR)/$*_2.fastq.gz \
@@ -42,7 +55,7 @@ $(KRAKEN_DB)/taxo.k2d:
 $(KRAKEN_DIR)/.done: $(patsubst %,$(KRAKEN_DIR)/%_report.txt,$(SAMPLES_ACTIVE)) | $(KRAKEN_DIR)
 	@touch $@
 
-$(KRAKEN_DIR)/%_report.txt: $(TRIMMED_DIR)/%_1.fastq.gz $(TRIMMED_DIR)/%_2.fastq.gz $(KRAKEN_DB)/taxo.k2d | $(KRAKEN_DIR)
+$(KRAKEN_DIR)/%_report.txt: $(KRAKEN_DB)/taxo.k2d | $(TRIMMED_DIR)/%_1.fastq.gz $(TRIMMED_DIR)/%_2.fastq.gz $(KRAKEN_DIR)
 	$(RUN_BIOINFO) kraken2 --db $(KRAKEN_DB) \
 		--paired --gzip-compressed --memory-mapping \
 		--threads $(KRAKEN_THREADS) \
@@ -63,7 +76,7 @@ $(QUAST_DIR)/%/report.tsv: $(ASSEMBLY_DIR)/%_assembled.fasta | $(QUAST_DIR)
 $(DOWNSAMPLED_DIR)/.done: $(patsubst %,$(DOWNSAMPLED_DIR)/%_1.fastq.gz,$(SAMPLES_ACTIVE)) | $(DOWNSAMPLED_DIR)
 	@touch $@
 
-$(DOWNSAMPLED_DIR)/%_1.fastq.gz $(DOWNSAMPLED_DIR)/%_2.fastq.gz &: $(TRIMMED_DIR)/%_1.fastq.gz $(TRIMMED_DIR)/%_2.fastq.gz $(QC_DIR)/%_fastp.json | $(DOWNSAMPLED_DIR)
+$(DOWNSAMPLED_DIR)/%_1.fastq.gz $(DOWNSAMPLED_DIR)/%_2.fastq.gz &: $(QC_DIR)/%_fastp.json | $(TRIMMED_DIR)/%_1.fastq.gz $(TRIMMED_DIR)/%_2.fastq.gz $(DOWNSAMPLED_DIR)
 	fraction=$$($(RUN_AMR) python3 -c "import json; d=json.load(open('$(QC_DIR)/$*_fastp.json')); cov=d['summary']['after_filtering']['total_bases']/$(GENOME_SIZE); print(min(0.999999, $(TARGET_COVERAGE)/cov))"); \
 	$(RUN_BIOINFO) seqtk sample -s42 $(TRIMMED_DIR)/$*_1.fastq.gz $$fraction | gzip > $(DOWNSAMPLED_DIR)/$*_1.fastq.gz; \
 	$(RUN_BIOINFO) seqtk sample -s42 $(TRIMMED_DIR)/$*_2.fastq.gz $$fraction | gzip > $(DOWNSAMPLED_DIR)/$*_2.fastq.gz
@@ -71,7 +84,7 @@ $(DOWNSAMPLED_DIR)/%_1.fastq.gz $(DOWNSAMPLED_DIR)/%_2.fastq.gz &: $(TRIMMED_DIR
 $(ASSEMBLY_DIR)/.done: $(patsubst %,$(ASSEMBLY_DIR)/%_assembled.fasta,$(SAMPLES_ACTIVE)) | $(ASSEMBLY_DIR)
 	@touch $@
 
-$(ASSEMBLY_DIR)/%_assembled.fasta: $(DOWNSAMPLED_DIR)/%_1.fastq.gz $(DOWNSAMPLED_DIR)/%_2.fastq.gz | $(ASSEMBLY_DIR)
+$(ASSEMBLY_DIR)/%_assembled.fasta: | $(DOWNSAMPLED_DIR)/%_1.fastq.gz $(DOWNSAMPLED_DIR)/%_2.fastq.gz $(ASSEMBLY_DIR)
 	$(RUN_BIOINFO) spades.py \
 		--pe1-1 $(DOWNSAMPLED_DIR)/$*_1.fastq.gz \
 		--pe1-2 $(DOWNSAMPLED_DIR)/$*_2.fastq.gz \
