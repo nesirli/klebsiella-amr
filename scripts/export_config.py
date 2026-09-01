@@ -31,6 +31,7 @@ def main():
         f"SPADES_THREADS := {c['resources']['spades_threads']}",
         f"SPADES_MEMORY := {c['resources']['spades_memory']}",
         f"AMRFINDER_THREADS := {c['resources']['amrfinder_threads']}",
+        f"MODEL_THREADS := {c['resources'].get('model_threads', 4)}",
     ]
 
     Path(args.output).parent.mkdir(parents=True, exist_ok=True)

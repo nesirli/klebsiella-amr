@@ -9,10 +9,25 @@ antibiotics:
   - ceftazidime
   - meropenem
 
-# Temporal split: pre-cutoff training, test_years testing
+# Temporal split: pre-cutoff training, test_years testing.
+# Cutoff 2020 rather than 2022: the 2023-24 window alone holds only 105
+# isolates, and for amikacin just one of them is resistant, so two of the four
+# drugs had no measurable test set. Starting the test window at 2021 gives 214
+# isolates and a usable minority class for all four.
+#
+# mode: temporal  -- train on <= train_cutoff, test on test_years. The honest
+#                    deployment question: does a model trained on old isolates
+#                    work on new ones?
+# mode: random    -- stratified random split (test_fraction held out), both
+#                    sides on the same distribution. Use it as a control: if a
+#                    drug scores well here and badly under temporal, the
+#                    features carry signal and it is the era shift that breaks
+#                    it. That is exactly the ceftazidime story.
 splits:
-  train_cutoff: 2022
-  test_years: [2023, 2024]
+  mode: temporal
+  train_cutoff: 2020
+  test_years: [2021, 2022, 2023, 2024]
+  test_fraction: 0.2
 
 # Development sample cap. Set to -1 to use all samples, or a small number
 # (e.g. 5 or 20) to limit each split independently for a quick dev run.
@@ -23,16 +38,31 @@ reference:
   kraken2_db: reference/kraken2_db
   amrfinder_db: reference/amrfinderplus
 
-# Assembly downsampling
+# Assembly downsampling. 60x is ample for isolate assembly and AMR gene
+# calling, and assembly time scales with read volume.
 genome:
   size: 5500000
-  target_coverage: 100
+  target_coverage: 60
 
-# Per-tool thread/memory settings
+# Per-tool thread/memory settings, sized for a 12-core (6P+6E) / 18 GB Mac.
+#
+# CPU: BATCH_SIZE samples run concurrently, each running one tool at a time,
+# so the ceiling is BATCH_SIZE x threads. At BATCH_SIZE=3 that is 9 of 12
+# cores (~75%), leaving the efficiency cores for the OS.
+#
+# RAM: spades_memory is a per-process ceiling, so BATCH_SIZE x spades_memory
+# (12 GB of 18) bounds the assembly phase; isolate assemblies at 60x typically
+# peak near 2-3 GB, well under it. The 8 GB Kraken2 database is memory-mapped
+# and therefore shared between concurrent samples rather than loaded per
+# process. The previous 16 GB x 5 concurrent budget exhausted swap.
 resources:
-  fastp_threads: 4
-  kraken2_threads: 4
-  quast_threads: 4
-  spades_threads: 8
-  spades_memory: 16
-  amrfinder_threads: 4
+  fastp_threads: 3
+  kraken2_threads: 3
+  quast_threads: 3
+  spades_threads: 3
+  spades_memory: 4
+  amrfinder_threads: 3
+  # Caps OMP threads per model process; make -j multiplies this, so keep
+  # -j x model_threads within the same budget. Without it XGBoost, LightGBM
+  # and torch each grab all 12 cores and fight each other under -j.
+  model_threads: 3

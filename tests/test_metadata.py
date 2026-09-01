@@ -75,6 +75,92 @@ def test_max_samples_caps_each_split(tmp_path):
     assert len(test) == 3
 
 
+def test_max_samples_preserves_class_balance(tmp_path):
+    """Capping once drew a near-single-class split from a balanced pool.
+
+    The input is ordered the way NCBI ships it -- all resistant isolates
+    first -- so .head(n) returned 20 R and no S. A stratified draw has to
+    carry the pool's balance into the capped split.
+    """
+    metadata = tmp_path / "metadata.csv"
+    config = tmp_path / "config.yaml"
+
+    rows = []
+    for i in range(80):
+        resistant = i < 40  # first half all R: the clustering that broke .head
+        rows.append({
+            "#Run": f"SRR{i:05d}",
+            "Collection date": "2019-05-01",
+            "Location": "Test",
+            "AST phenotypes": f"amikacin={'R' if resistant else 'S'},"
+                              f"ciprofloxacin={'R' if resistant else 'S'}",
+        })
+    pd.DataFrame(rows).to_csv(metadata, sep=";", index=False)
+    _make_config(config, metadata)
+
+    train, _ = _run_metadata(config, tmp_path, 20)
+
+    assert len(train) == 20
+    counts = train["amikacin"].value_counts()
+    assert counts.get("R", 0) == 10 and counts.get("S", 0) == 10
+
+
+def test_random_split_puts_both_eras_on_both_sides(tmp_path):
+    """The control for the temporal split's distribution shift.
+
+    A temporal split hands the model one era to learn and another to be judged
+    on; a stratified random split must mix them, so that a weak score means
+    weak features rather than a shifted population.
+    """
+    metadata = tmp_path / "metadata.csv"
+    config = tmp_path / "config.yaml"
+    _make_input(metadata, n_per_year=10)
+    _make_config(config, metadata)
+
+    subprocess.run(
+        [sys.executable, "scripts/metadata.py", "--config", str(config),
+         "--train-output", str(tmp_path / "train.csv"),
+         "--test-output", str(tmp_path / "test.csv"),
+         "--samples-output", str(tmp_path / "samples.txt"),
+         "--max-samples", "-1", "--split-mode", "random", "--test-fraction", "0.25"],
+        check=True,
+    )
+    train = pd.read_csv(tmp_path / "train.csv")
+    test = pd.read_csv(tmp_path / "test.csv")
+
+    assert set(train["run"]).isdisjoint(test["run"])
+    assert len(train) + len(test) == 40
+    # Both sides span the full range of years, unlike the temporal split.
+    assert set(test["year"]) == {2019, 2021, 2023, 2024}
+    assert set(train["year"]) == {2019, 2021, 2023, 2024}
+    # And both carry both classes.
+    assert set(test["amikacin"]) == {"R", "S"}
+
+
+def test_unlabelled_samples_are_dropped(tmp_path):
+    """No R/S call for any modelled drug means no model can use the isolate."""
+    metadata = tmp_path / "metadata.csv"
+    config = tmp_path / "config.yaml"
+
+    rows = [{
+        "#Run": "SRR00001", "Collection date": "2019-05-01", "Location": "Test",
+        "AST phenotypes": "amikacin=R,ciprofloxacin=S",
+    }, {
+        "#Run": "SRR00002", "Collection date": "2019-05-01", "Location": "Test",
+        "AST phenotypes": "meropenem=R",  # not a modelled drug here
+    }, {
+        "#Run": "SRR00003", "Collection date": "2019-05-01", "Location": "Test",
+        "AST phenotypes": "amikacin=ND,ciprofloxacin=ND",
+    }]
+    pd.DataFrame(rows).to_csv(metadata, sep=";", index=False)
+    _make_config(config, metadata)
+
+    train, _ = _run_metadata(config, tmp_path, -1)
+
+    assert list(train["run"]) == ["SRR00001"]
+    assert (tmp_path / "samples.txt").read_text().split() == ["SRR00001"]
+
+
 def test_samples_mk_matches_samples_txt(tmp_path):
     """samples.mk is included by the Makefile; it must list the same runs."""
     metadata = tmp_path / "metadata.csv"
