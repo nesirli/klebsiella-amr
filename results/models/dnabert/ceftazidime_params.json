@@ -1,0 +1,21 @@
+{
+  "model": "dnabert",
+  "antibiotic": "ceftazidime",
+  "n_train": 941,
+  "n_test": 177,
+  "n_features": 686,
+  "device": "mps",
+  "hyperparameters": {
+    "epochs": 1,
+    "batch_size": 4,
+    "encode_batch": 8,
+    "max_length": 64,
+    "learning_rate": 6.893882309676885e-06,
+    "weight_decay": 0.00348901884549139,
+    "base_model": "zhihan1996/DNABERT-2-117M"
+  },
+  "train_class_balance": {
+    "R": 442,
+    "S": 499
+  }
+}

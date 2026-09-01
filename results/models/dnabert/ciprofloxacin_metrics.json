@@ -1,0 +1,22 @@
+{
+  "model": "dnabert",
+  "antibiotic": "ciprofloxacin",
+  "n_train": 333,
+  "n_test": 188,
+  "n_features": 686,
+  "device": "mps",
+  "threshold": 0.7336609959602356,
+  "accuracy": 0.7659574468085106,
+  "balanced_accuracy": 0.757079365079365,
+  "f1": 0.8166666666666667,
+  "precision": 0.8521739130434782,
+  "recall": 0.784,
+  "roc_auc": 0.8406349206349207,
+  "pr_auc": 0.9108710656450019,
+  "confusion_matrix": {
+    "tn": 46,
+    "fp": 17,
+    "fn": 27,
+    "tp": 98
+  }
+}

@@ -1,27 +1,22 @@
 {
   "model": "nn",
   "antibiotic": "ceftazidime",
-  "n_train": 49,
-  "n_test": 39,
-  "n_features": 172,
+  "n_train": 941,
+  "n_test": 177,
+  "n_features": 451,
   "hyperparameters": {
-    "epochs": 97,
+    "epochs": 50,
     "batch_size": 8,
-    "learning_rate": 0.00020511104188433984,
+    "learning_rate": 0.0001016922036361093,
     "hidden": [
-      128,
-      64
+      57,
+      63
     ],
-    "dropout": 0.5330880728874676,
-    "weight_decay": 1.493656855461763e-06,
-    "hidden0": 111,
-    "hidden1": 69,
-    "n_trials": 20,
-    "n_splits": 3,
-    "best_cv_roc_auc": 1.0
+    "dropout": 0.26625709422499105,
+    "weight_decay": 0.0009361976637644958
   },
   "train_class_balance": {
-    "R": 39,
-    "S": 10
+    "R": 442,
+    "S": 499
   }
 }

@@ -1,14 +1,23 @@
 {
-  "n_estimators": 182,
-  "num_leaves": 61,
-  "max_depth": 7,
-  "learning_rate": 0.030405325392865647,
-  "subsample": 0.5780093202212182,
-  "colsample_bytree": 0.5779972601681014,
-  "min_child_samples": 3,
-  "reg_alpha": 0.6245760287469893,
-  "reg_lambda": 0.002570603566117598,
-  "n_trials": 30,
-  "n_splits": 3,
-  "best_cv_roc_auc": 1.0
+  "hyperparameters": {
+    "objective": "binary",
+    "metric": "binary_logloss",
+    "n_estimators": 228,
+    "num_leaves": 40,
+    "max_depth": 2,
+    "learning_rate": 0.03198617182203562,
+    "subsample": 0.5852620618436457,
+    "colsample_bytree": 0.5325257964926398,
+    "min_child_samples": 20,
+    "reg_alpha": 4.905556676028766,
+    "reg_lambda": 0.1886149587855396,
+    "is_unbalance": true,
+    "random_state": 42,
+    "verbose": -1
+  },
+  "tuning": {
+    "n_trials": 30,
+    "n_splits": 3,
+    "best_cv_roc_auc": 0.9660994773580273
+  }
 }

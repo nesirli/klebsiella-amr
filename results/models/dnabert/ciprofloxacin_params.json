@@ -1,0 +1,21 @@
+{
+  "model": "dnabert",
+  "antibiotic": "ciprofloxacin",
+  "n_train": 333,
+  "n_test": 188,
+  "n_features": 686,
+  "device": "mps",
+  "hyperparameters": {
+    "epochs": 3,
+    "batch_size": 2,
+    "encode_batch": 8,
+    "max_length": 64,
+    "learning_rate": 1.1844319751820392e-05,
+    "weight_decay": 0.00014936568554617635,
+    "base_model": "zhihan1996/DNABERT-2-117M"
+  },
+  "train_class_balance": {
+    "R": 257,
+    "S": 76
+  }
+}

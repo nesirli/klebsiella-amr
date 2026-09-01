@@ -1,0 +1,22 @@
+{
+  "model": "dnabert",
+  "antibiotic": "meropenem",
+  "n_train": 317,
+  "n_test": 199,
+  "n_features": 686,
+  "device": "mps",
+  "threshold": 0.694161593914032,
+  "accuracy": 0.7035175879396985,
+  "balanced_accuracy": 0.7115566037735849,
+  "f1": 0.49572649572649574,
+  "precision": 0.37662337662337664,
+  "recall": 0.725,
+  "roc_auc": 0.7814465408805031,
+  "pr_auc": 0.3742603742495646,
+  "confusion_matrix": {
+    "tn": 111,
+    "fp": 48,
+    "fn": 11,
+    "tp": 29
+  }
+}

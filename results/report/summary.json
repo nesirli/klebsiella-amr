@@ -2,7 +2,8 @@
   "models": [
     "xgboost",
     "lightgbm",
-    "nn"
+    "nn",
+    "dnabert"
   ],
   "antibiotics": [
     "amikacin",
@@ -14,230 +15,994 @@
     {
       "model": "xgboost",
       "antibiotic": "amikacin",
-      "n_train": 44,
-      "n_test": 50,
-      "accuracy": 0.88,
-      "balanced_accuracy": 0.4489795918367347,
-      "f1": 0.0,
-      "precision": 0.0,
-      "recall": 0.0,
-      "roc_auc": 0.7551020408163265,
-      "pr_auc": 0.07692307692307693,
+      "n_train": 302,
+      "n_test": 178,
+      "accuracy": 0.9719101123595506,
+      "balanced_accuracy": 0.9564043209876543,
+      "f1": 0.8571428571428571,
+      "precision": 0.7894736842105263,
+      "recall": 0.9375,
+      "roc_auc": 0.9965277777777778,
+      "pr_auc": 0.9725378787878788,
       "confusion_matrix": {
-        "tn": 44,
-        "fp": 5,
+        "tn": 158,
+        "fp": 4,
         "fn": 1,
-        "tp": 0
-      }
+        "tp": 15
+      },
+      "skipped": null,
+      "top_features": [
+        {
+          "gene": "parC_S80I",
+          "importance": 0.6645225
+        },
+        {
+          "gene": "aac(6')-Ib",
+          "importance": 0.4957013
+        },
+        {
+          "gene": "armA",
+          "importance": 0.4359328
+        },
+        {
+          "gene": "blaKPC-3",
+          "importance": 0.30614313
+        },
+        {
+          "gene": "aph(3')-VIb",
+          "importance": 0.210105
+        },
+        {
+          "gene": "catA1",
+          "importance": 0.20967504
+        },
+        {
+          "gene": "dfrA12",
+          "importance": 0.18206982
+        },
+        {
+          "gene": "tet(A)",
+          "importance": 0.17822601
+        },
+        {
+          "gene": "aac(3)-IIe",
+          "importance": 0.133014
+        },
+        {
+          "gene": "aph(3'')-Ib",
+          "importance": 0.12679324
+        }
+      ]
     },
     {
       "model": "xgboost",
       "antibiotic": "ciprofloxacin",
-      "n_train": 41,
-      "n_test": 45,
-      "accuracy": 0.8,
-      "balanced_accuracy": 0.7666666666666666,
-      "f1": 0.8524590163934426,
-      "precision": 0.8387096774193549,
-      "recall": 0.8666666666666667,
-      "roc_auc": 0.8077777777777778,
-      "pr_auc": 0.8849216972536865,
+      "n_train": 333,
+      "n_test": 188,
+      "accuracy": 0.75,
+      "balanced_accuracy": 0.7608253968253968,
+      "f1": 0.7947598253275109,
+      "precision": 0.875,
+      "recall": 0.728,
+      "roc_auc": 0.8526349206349206,
+      "pr_auc": 0.9017701272085549,
       "confusion_matrix": {
-        "tn": 10,
-        "fp": 5,
-        "fn": 4,
-        "tp": 26
-      }
+        "tn": 50,
+        "fp": 13,
+        "fn": 34,
+        "tp": 91
+      },
+      "skipped": null,
+      "top_features": [
+        {
+          "gene": "parC_S80I",
+          "importance": 0.19281258
+        },
+        {
+          "gene": "blaCTX-M-15",
+          "importance": 0.02934108
+        },
+        {
+          "gene": "qacEdelta1",
+          "importance": 0.02499622
+        },
+        {
+          "gene": "gyrA_S83I",
+          "importance": 0.005302312
+        },
+        {
+          "gene": "sul1",
+          "importance": 0.0049223634
+        },
+        {
+          "gene": "gyrA_S83T",
+          "importance": 0.0044490295
+        },
+        {
+          "gene": "gyrA_S83F",
+          "importance": 0.0022568628
+        },
+        {
+          "gene": "aac(6')-Ib-cr5",
+          "importance": 0.0016160444
+        },
+        {
+          "gene": "catB3",
+          "importance": 0.0012568632
+        },
+        {
+          "gene": "aac(3)-IIe",
+          "importance": 0.0012270343
+        }
+      ]
     },
     {
       "model": "xgboost",
       "antibiotic": "ceftazidime",
-      "n_train": 49,
-      "n_test": 39,
-      "accuracy": 0.4358974358974359,
-      "balanced_accuracy": 0.47685185185185186,
-      "f1": 0.47619047619047616,
-      "precision": 0.6666666666666666,
-      "recall": 0.37037037037037035,
-      "roc_auc": 0.5493827160493827,
-      "pr_auc": 0.7812271560563773,
+      "n_train": 941,
+      "n_test": 177,
+      "accuracy": 0.7457627118644068,
+      "balanced_accuracy": 0.5614814814814815,
+      "f1": 0.8464163822525598,
+      "precision": 0.8671328671328671,
+      "recall": 0.8266666666666667,
+      "roc_auc": 0.6158024691358025,
+      "pr_auc": 0.8954398264843009,
       "confusion_matrix": {
-        "tn": 7,
-        "fp": 5,
-        "fn": 17,
-        "tp": 10
-      }
+        "tn": 8,
+        "fp": 19,
+        "fn": 26,
+        "tp": 124
+      },
+      "skipped": null,
+      "top_features": [
+        {
+          "gene": "parC_S80I",
+          "importance": 1.056285
+        },
+        {
+          "gene": "sul1",
+          "importance": 0.23307154
+        },
+        {
+          "gene": "gyrA_S83T",
+          "importance": 0.20642185
+        },
+        {
+          "gene": "blaCTX-M-15",
+          "importance": 0.19774826
+        },
+        {
+          "gene": "blaSHV-11",
+          "importance": 0.17305794
+        },
+        {
+          "gene": "gyrA_S83I",
+          "importance": 0.15912527
+        },
+        {
+          "gene": "blaTEM-1",
+          "importance": 0.118881196
+        },
+        {
+          "gene": "blaKPC-3",
+          "importance": 0.06367279
+        },
+        {
+          "gene": "blaSHV-12",
+          "importance": 0.06036128
+        },
+        {
+          "gene": "qnrS1",
+          "importance": 0.053108793
+        }
+      ]
     },
     {
       "model": "xgboost",
       "antibiotic": "meropenem",
-      "n_train": 40,
-      "n_test": 47,
-      "accuracy": 0.8936170212765957,
-      "balanced_accuracy": 0.7055555555555555,
-      "f1": 0.2857142857142857,
-      "precision": 0.2,
-      "recall": 0.5,
-      "roc_auc": 0.8777777777777778,
-      "pr_auc": 0.225,
+      "n_train": 317,
+      "n_test": 199,
+      "accuracy": 0.8190954773869347,
+      "balanced_accuracy": 0.8213050314465409,
+      "f1": 0.6470588235294118,
+      "precision": 0.532258064516129,
+      "recall": 0.825,
+      "roc_auc": 0.8661163522012578,
+      "pr_auc": 0.8317241689764703,
       "confusion_matrix": {
-        "tn": 41,
-        "fp": 4,
-        "fn": 1,
-        "tp": 1
-      }
+        "tn": 130,
+        "fp": 29,
+        "fn": 7,
+        "tp": 33
+      },
+      "skipped": null,
+      "top_features": [
+        {
+          "gene": "blaKPC-3",
+          "importance": 1.061198
+        },
+        {
+          "gene": "parC_S80I",
+          "importance": 0.621543
+        },
+        {
+          "gene": "ble",
+          "importance": 0.35327303
+        },
+        {
+          "gene": "blaKPC-2",
+          "importance": 0.35095966
+        },
+        {
+          "gene": "ompK36_D135DGD",
+          "importance": 0.30729657
+        },
+        {
+          "gene": "dfrA14",
+          "importance": 0.22282144
+        },
+        {
+          "gene": "aadA2",
+          "importance": 0.19651991
+        },
+        {
+          "gene": "aac(6')-Ib",
+          "importance": 0.19340272
+        },
+        {
+          "gene": "tet(A)",
+          "importance": 0.17286453
+        },
+        {
+          "gene": "aadA1",
+          "importance": 0.17045365
+        }
+      ]
     },
     {
       "model": "lightgbm",
       "antibiotic": "amikacin",
-      "n_train": 44,
-      "n_test": 50,
-      "accuracy": 0.92,
-      "balanced_accuracy": 0.46938775510204084,
-      "f1": 0.0,
-      "precision": 0.0,
-      "recall": 0.0,
-      "roc_auc": 0.8571428571428572,
-      "pr_auc": 0.125,
+      "n_train": 302,
+      "n_test": 178,
+      "accuracy": 0.9775280898876404,
+      "balanced_accuracy": 0.9594907407407407,
+      "f1": 0.8823529411764706,
+      "precision": 0.8333333333333334,
+      "recall": 0.9375,
+      "roc_auc": 0.9972993827160493,
+      "pr_auc": 0.9759803921568628,
       "confusion_matrix": {
-        "tn": 46,
+        "tn": 159,
         "fp": 3,
         "fn": 1,
-        "tp": 0
-      }
+        "tp": 15
+      },
+      "skipped": null,
+      "top_features": [
+        {
+          "gene": "parC_S80I",
+          "importance": 0.6899310514895729
+        },
+        {
+          "gene": "aac(6')-Ib",
+          "importance": 0.4451958774328414
+        },
+        {
+          "gene": "armA",
+          "importance": 0.4326405714738683
+        },
+        {
+          "gene": "blaKPC-3",
+          "importance": 0.3219522583290529
+        },
+        {
+          "gene": "catA1",
+          "importance": 0.212292995212055
+        },
+        {
+          "gene": "blaSHV-1",
+          "importance": 0.202004348053566
+        },
+        {
+          "gene": "dfrA12",
+          "importance": 0.2002310794137053
+        },
+        {
+          "gene": "blaOXA-1",
+          "importance": 0.1838841615775587
+        },
+        {
+          "gene": "oqxB",
+          "importance": 0.167320022324923
+        },
+        {
+          "gene": "aph(3')-VIb",
+          "importance": 0.1666742519783645
+        }
+      ]
     },
     {
       "model": "lightgbm",
       "antibiotic": "ciprofloxacin",
-      "n_train": 41,
-      "n_test": 45,
-      "accuracy": 0.6888888888888889,
-      "balanced_accuracy": 0.7,
-      "f1": 0.7407407407407407,
-      "precision": 0.8333333333333334,
-      "recall": 0.6666666666666666,
-      "roc_auc": 0.88,
-      "pr_auc": 0.9403574310351445,
+      "n_train": 333,
+      "n_test": 188,
+      "accuracy": 0.7393617021276596,
+      "balanced_accuracy": 0.741015873015873,
+      "f1": 0.7896995708154506,
+      "precision": 0.8518518518518519,
+      "recall": 0.736,
+      "roc_auc": 0.8666666666666665,
+      "pr_auc": 0.915820605434831,
       "confusion_matrix": {
-        "tn": 11,
-        "fp": 4,
-        "fn": 10,
-        "tp": 20
-      }
+        "tn": 47,
+        "fp": 16,
+        "fn": 33,
+        "tp": 92
+      },
+      "skipped": null,
+      "top_features": [
+        {
+          "gene": "parC_S80I",
+          "importance": 1.5889810126818658
+        },
+        {
+          "gene": "gyrA_S83T",
+          "importance": 0.3749979463845531
+        },
+        {
+          "gene": "gyrA_S83F",
+          "importance": 0.3182712011470038
+        },
+        {
+          "gene": "gyrA_S83I",
+          "importance": 0.2775755269420878
+        },
+        {
+          "gene": "blaCTX-M-15",
+          "importance": 0.1637328700549734
+        },
+        {
+          "gene": "qacEdelta1",
+          "importance": 0.1007060926606117
+        },
+        {
+          "gene": "tet(D)",
+          "importance": 0.0706980855191232
+        },
+        {
+          "gene": "sul1",
+          "importance": 0.0679992219952524
+        },
+        {
+          "gene": "dfrA14",
+          "importance": 0.06341577868203
+        },
+        {
+          "gene": "qnrB1",
+          "importance": 0.0482329741898486
+        }
+      ]
     },
     {
       "model": "lightgbm",
       "antibiotic": "ceftazidime",
-      "n_train": 49,
-      "n_test": 39,
-      "accuracy": 0.5897435897435898,
-      "balanced_accuracy": 0.5185185185185185,
-      "f1": 0.7037037037037037,
-      "precision": 0.7037037037037037,
-      "recall": 0.7037037037037037,
-      "roc_auc": 0.5416666666666667,
-      "pr_auc": 0.793900194928292,
+      "n_train": 941,
+      "n_test": 177,
+      "accuracy": 0.7457627118644068,
+      "balanced_accuracy": 0.5311111111111111,
+      "f1": 0.8484848484848485,
+      "precision": 0.8571428571428571,
+      "recall": 0.84,
+      "roc_auc": 0.6203703703703705,
+      "pr_auc": 0.898369604072912,
       "confusion_matrix": {
-        "tn": 4,
-        "fp": 8,
-        "fn": 8,
-        "tp": 19
-      }
+        "tn": 6,
+        "fp": 21,
+        "fn": 24,
+        "tp": 126
+      },
+      "skipped": null,
+      "top_features": [
+        {
+          "gene": "parC_S80I",
+          "importance": 0.8250226868858689
+        },
+        {
+          "gene": "gyrA_S83I",
+          "importance": 0.3391515795572083
+        },
+        {
+          "gene": "sul1",
+          "importance": 0.2027152830958125
+        },
+        {
+          "gene": "blaSHV-11",
+          "importance": 0.1822986179281026
+        },
+        {
+          "gene": "blaCTX-M-15",
+          "importance": 0.1748295312084393
+        },
+        {
+          "gene": "gyrA_S83T",
+          "importance": 0.1717276647035561
+        },
+        {
+          "gene": "blaTEM-1",
+          "importance": 0.1089892800792918
+        },
+        {
+          "gene": "aac(6')-Ib",
+          "importance": 0.0771418526369533
+        },
+        {
+          "gene": "qnrS1",
+          "importance": 0.0565137448312653
+        },
+        {
+          "gene": "qacEdelta1",
+          "importance": 0.0543539217811347
+        }
+      ]
     },
     {
       "model": "lightgbm",
       "antibiotic": "meropenem",
-      "n_train": 40,
-      "n_test": 47,
-      "accuracy": 0.7872340425531915,
-      "balanced_accuracy": 0.65,
-      "f1": 0.16666666666666666,
-      "precision": 0.1,
-      "recall": 0.5,
-      "roc_auc": 0.8111111111111111,
-      "pr_auc": 0.14835164835164835,
+      "n_train": 317,
+      "n_test": 199,
+      "accuracy": 0.8894472361809045,
+      "balanced_accuracy": 0.8559748427672956,
+      "f1": 0.7441860465116279,
+      "precision": 0.6956521739130435,
+      "recall": 0.8,
+      "roc_auc": 0.8819182389937107,
+      "pr_auc": 0.8296699322147677,
       "confusion_matrix": {
-        "tn": 36,
-        "fp": 9,
-        "fn": 1,
-        "tp": 1
-      }
+        "tn": 145,
+        "fp": 14,
+        "fn": 8,
+        "tp": 32
+      },
+      "skipped": null,
+      "top_features": [
+        {
+          "gene": "blaKPC-3",
+          "importance": 0.915948368294555
+        },
+        {
+          "gene": "blaKPC-2",
+          "importance": 0.3652533114130228
+        },
+        {
+          "gene": "parC_S80I",
+          "importance": 0.3550123558477947
+        },
+        {
+          "gene": "ompK36_D135DGD",
+          "importance": 0.2822607003415633
+        },
+        {
+          "gene": "ble",
+          "importance": 0.2472703799875922
+        },
+        {
+          "gene": "blaCTX-M-15",
+          "importance": 0.09310043323368
+        },
+        {
+          "gene": "gyrA_S83F",
+          "importance": 0.0892195647930822
+        },
+        {
+          "gene": "aadA2",
+          "importance": 0.0733162324992238
+        },
+        {
+          "gene": "aac(6')-Ib",
+          "importance": 0.0624958145332725
+        },
+        {
+          "gene": "blaNDM-1",
+          "importance": 0.0496068106406831
+        }
+      ]
     },
     {
       "model": "nn",
       "antibiotic": "amikacin",
-      "n_train": 44,
-      "n_test": 50,
-      "accuracy": 0.86,
-      "balanced_accuracy": 0.4387755102040816,
-      "f1": 0.0,
-      "precision": 0.0,
-      "recall": 0.0,
-      "roc_auc": 0.5102040816326531,
-      "pr_auc": 0.04,
+      "n_train": 302,
+      "n_test": 178,
+      "accuracy": 0.9719101123595506,
+      "balanced_accuracy": 0.9845679012345678,
+      "f1": 0.8648648648648649,
+      "precision": 0.7619047619047619,
+      "recall": 1.0,
+      "roc_auc": 1.0,
+      "pr_auc": 1.0,
       "confusion_matrix": {
-        "tn": 43,
-        "fp": 6,
-        "fn": 1,
-        "tp": 0
-      }
+        "tn": 157,
+        "fp": 5,
+        "fn": 0,
+        "tp": 16
+      },
+      "skipped": null,
+      "top_features": [
+        {
+          "gene": "catB",
+          "importance": 0.0019290123456789
+        },
+        {
+          "gene": "rmtF1",
+          "importance": 0.0019290123456789
+        },
+        {
+          "gene": "armA",
+          "importance": 0.0011574074074074
+        },
+        {
+          "gene": "aac(6')-Ib",
+          "importance": 0.0007716049382716
+        },
+        {
+          "gene": "blaCTX-M-14",
+          "importance": 0.0007716049382715
+        },
+        {
+          "gene": "gyrA_S83T",
+          "importance": 0.0007716049382715
+        },
+        {
+          "gene": "qnrS1",
+          "importance": 0.0007716049382715
+        },
+        {
+          "gene": "blaSHV",
+          "importance": 0.0003858024691358
+        },
+        {
+          "gene": "arr-2",
+          "importance": 0.0003858024691357
+        },
+        {
+          "gene": "catA1",
+          "importance": 0.0003858024691357
+        }
+      ]
     },
     {
       "model": "nn",
       "antibiotic": "ciprofloxacin",
-      "n_train": 41,
-      "n_test": 45,
-      "accuracy": 0.8444444444444444,
-      "balanced_accuracy": 0.7833333333333333,
-      "f1": 0.8923076923076924,
-      "precision": 0.8285714285714286,
-      "recall": 0.9666666666666667,
-      "roc_auc": 0.8577777777777778,
-      "pr_auc": 0.9297682734228027,
+      "n_train": 333,
+      "n_test": 188,
+      "accuracy": 0.7393617021276596,
+      "balanced_accuracy": 0.7567619047619047,
+      "f1": 0.7822222222222223,
+      "precision": 0.88,
+      "recall": 0.704,
+      "roc_auc": 0.852063492063492,
+      "pr_auc": 0.915948039315722,
       "confusion_matrix": {
-        "tn": 9,
-        "fp": 6,
-        "fn": 1,
-        "tp": 29
-      }
+        "tn": 51,
+        "fp": 12,
+        "fn": 37,
+        "tp": 88
+      },
+      "skipped": null,
+      "top_features": [
+        {
+          "gene": "qnrS1",
+          "importance": 0.0184126984126983
+        },
+        {
+          "gene": "qnrB1",
+          "importance": 0.0149841269841268
+        },
+        {
+          "gene": "catB3",
+          "importance": 0.0133968253968251
+        },
+        {
+          "gene": "parC_S80I",
+          "importance": 0.0130158730158729
+        },
+        {
+          "gene": "gyrA_S83I",
+          "importance": 0.0100317460317458
+        },
+        {
+          "gene": "blaCTX-M-15",
+          "importance": 0.0097777777777776
+        },
+        {
+          "gene": "blaSHV-28",
+          "importance": 0.008126984126984
+        },
+        {
+          "gene": "gyrA_S83T",
+          "importance": 0.0075555555555555
+        },
+        {
+          "gene": "ble",
+          "importance": 0.0073650793650792
+        },
+        {
+          "gene": "oqxB",
+          "importance": 0.0058412698412696
+        }
+      ]
     },
     {
       "model": "nn",
       "antibiotic": "ceftazidime",
-      "n_train": 49,
-      "n_test": 39,
-      "accuracy": 0.5897435897435898,
-      "balanced_accuracy": 0.5185185185185185,
-      "f1": 0.7037037037037037,
-      "precision": 0.7037037037037037,
-      "recall": 0.7037037037037037,
-      "roc_auc": 0.5138888888888888,
-      "pr_auc": 0.7622768683964987,
+      "n_train": 941,
+      "n_test": 177,
+      "accuracy": 0.7853107344632768,
+      "balanced_accuracy": 0.5392592592592592,
+      "f1": 0.8758169934640523,
+      "precision": 0.8589743589743589,
+      "recall": 0.8933333333333333,
+      "roc_auc": 0.6791358024691359,
+      "pr_auc": 0.9194742047856657,
       "confusion_matrix": {
-        "tn": 4,
-        "fp": 8,
-        "fn": 8,
-        "tp": 19
-      }
+        "tn": 5,
+        "fp": 22,
+        "fn": 16,
+        "tp": 134
+      },
+      "skipped": null,
+      "top_features": [
+        {
+          "gene": "blaSHV-11",
+          "importance": 0.0524691358024691
+        },
+        {
+          "gene": "gyrA_S83T",
+          "importance": 0.0500000000000001
+        },
+        {
+          "gene": "tet(A)",
+          "importance": 0.0377777777777776
+        },
+        {
+          "gene": "ampC-Kaer",
+          "importance": 0.0335802469135803
+        },
+        {
+          "gene": "gyrA_S83I",
+          "importance": 0.0191358024691358
+        },
+        {
+          "gene": "blaSHV-1",
+          "importance": 0.0179012345679012
+        },
+        {
+          "gene": "qnrS1",
+          "importance": 0.0177777777777777
+        },
+        {
+          "gene": "catA1",
+          "importance": 0.0160493827160492
+        },
+        {
+          "gene": "ompK36_D135DGD",
+          "importance": 0.015185185185185
+        },
+        {
+          "gene": "aph(6)-Id",
+          "importance": 0.0128395061728394
+        }
+      ]
     },
     {
       "model": "nn",
       "antibiotic": "meropenem",
-      "n_train": 40,
-      "n_test": 47,
-      "accuracy": 0.9361702127659575,
-      "balanced_accuracy": 0.7277777777777779,
-      "f1": 0.4,
-      "precision": 0.3333333333333333,
-      "recall": 0.5,
-      "roc_auc": 0.6888888888888889,
-      "pr_auc": 0.28448275862068967,
+      "n_train": 317,
+      "n_test": 199,
+      "accuracy": 0.8492462311557789,
+      "balanced_accuracy": 0.8214622641509435,
+      "f1": 0.6739130434782609,
+      "precision": 0.5961538461538461,
+      "recall": 0.775,
+      "roc_auc": 0.8665094339622641,
+      "pr_auc": 0.8108337804041159,
       "confusion_matrix": {
-        "tn": 43,
-        "fp": 2,
-        "fn": 1,
-        "tp": 1
-      }
+        "tn": 138,
+        "fp": 21,
+        "fn": 9,
+        "tp": 31
+      },
+      "skipped": null,
+      "top_features": [
+        {
+          "gene": "blaKPC-3",
+          "importance": 0.0309748427672955
+        },
+        {
+          "gene": "ompK36_D135DGD",
+          "importance": 0.0235849056603771
+        },
+        {
+          "gene": "ble",
+          "importance": 0.0229559748427672
+        },
+        {
+          "gene": "oqxB19",
+          "importance": 0.0154088050314464
+        },
+        {
+          "gene": "tet(A)",
+          "importance": 0.0097484276729559
+        },
+        {
+          "gene": "blaCMY-2",
+          "importance": 0.0083333333333333
+        },
+        {
+          "gene": "aac(6')-Ib",
+          "importance": 0.0083333333333333
+        },
+        {
+          "gene": "ompK35_R60LfsTer31",
+          "importance": 0.0078616352201257
+        },
+        {
+          "gene": "aph(3')-VI",
+          "importance": 0.006132075471698
+        },
+        {
+          "gene": "sul2",
+          "importance": 0.0044025157232703
+        }
+      ]
+    },
+    {
+      "model": "dnabert",
+      "antibiotic": "amikacin",
+      "n_train": 302,
+      "n_test": 178,
+      "accuracy": 0.6741573033707865,
+      "balanced_accuracy": 0.8209876543209876,
+      "f1": 0.35555555555555557,
+      "precision": 0.21621621621621623,
+      "recall": 1.0,
+      "roc_auc": 0.9467592592592593,
+      "pr_auc": 0.7154828202711268,
+      "confusion_matrix": {
+        "tn": 104,
+        "fp": 58,
+        "fn": 0,
+        "tp": 16
+      },
+      "skipped": null,
+      "top_features": [
+        {
+          "gene": "blaCMY-2",
+          "importance": 0.0905596986413002
+        },
+        {
+          "gene": "ompK35_@del_273_274_175236_175239_1_STOP",
+          "importance": 0.0706303268671035
+        },
+        {
+          "gene": "ompK36_@fs_184_185_110308_256106_1",
+          "importance": 0.0609253346920013
+        },
+        {
+          "gene": "dfrA50",
+          "importance": 0.0600651949644088
+        },
+        {
+          "gene": "aadA5",
+          "importance": 0.0577791482210159
+        },
+        {
+          "gene": "qnrB19",
+          "importance": 0.0567830391228199
+        },
+        {
+          "gene": "oqxR_@fs_88_89_50201_91960_1",
+          "importance": 0.0497002303600311
+        },
+        {
+          "gene": "ompK35_E132K",
+          "importance": 0.0495611950755119
+        },
+        {
+          "gene": "aac(3)-IIe",
+          "importance": 0.0458277948200702
+        },
+        {
+          "gene": "ompK36_@del_300_301_125765_125768_1_STOP",
+          "importance": 0.0437502115964889
+        }
+      ]
+    },
+    {
+      "model": "dnabert",
+      "antibiotic": "ciprofloxacin",
+      "n_train": 333,
+      "n_test": 188,
+      "accuracy": 0.7659574468085106,
+      "balanced_accuracy": 0.757079365079365,
+      "f1": 0.8166666666666667,
+      "precision": 0.8521739130434782,
+      "recall": 0.784,
+      "roc_auc": 0.8406349206349207,
+      "pr_auc": 0.9108710656450019,
+      "confusion_matrix": {
+        "tn": 46,
+        "fp": 17,
+        "fn": 27,
+        "tp": 98
+      },
+      "skipped": null,
+      "top_features": [
+        {
+          "gene": "ramR_@fs_79_80_28931_61618_1",
+          "importance": 0.1755040287971496
+        },
+        {
+          "gene": "ompK35_@fs_46_47_0_30950_0",
+          "importance": 0.1436082124710083
+        },
+        {
+          "gene": "ramR_@del_146_147_306157_306160_0_STOP",
+          "importance": 0.1433844268321991
+        },
+        {
+          "gene": "ompK36_@del_300_301_125765_125768_1_STOP",
+          "importance": 0.1426710486412048
+        },
+        {
+          "gene": "blaSHV-7",
+          "importance": 0.1393274366855621
+        },
+        {
+          "gene": "blaSHV-49",
+          "importance": 0.1276533305644989
+        },
+        {
+          "gene": "blaSHV-12",
+          "importance": 0.1146812289953231
+        },
+        {
+          "gene": "tet(M)",
+          "importance": 0.1101157665252685
+        },
+        {
+          "gene": "qnrS",
+          "importance": 0.1095997542142868
+        },
+        {
+          "gene": "ompK35_E132K",
+          "importance": 0.108375035226345
+        }
+      ]
+    },
+    {
+      "model": "dnabert",
+      "antibiotic": "ceftazidime",
+      "n_train": 941,
+      "n_test": 177,
+      "accuracy": 0.7796610169491526,
+      "balanced_accuracy": 0.47518518518518515,
+      "f1": 0.8753993610223643,
+      "precision": 0.8404907975460123,
+      "recall": 0.9133333333333333,
+      "roc_auc": 0.54320987654321,
+      "pr_auc": 0.8870173204228463,
+      "confusion_matrix": {
+        "tn": 1,
+        "fp": 26,
+        "fn": 13,
+        "tp": 137
+      },
+      "skipped": null,
+      "top_features": [
+        {
+          "gene": "ompK36_@fs_184_185_110308_256106_1",
+          "importance": 0.1609058529138565
+        },
+        {
+          "gene": "ompK35_@fs_46_47_0_30950_0",
+          "importance": 0.1495536565780639
+        },
+        {
+          "gene": "ompK36_@del_300_301_125765_125768_1_STOP",
+          "importance": 0.1493014395236969
+        },
+        {
+          "gene": "ompK35_@fs_46_47_597_31631_1",
+          "importance": 0.1157273650169372
+        },
+        {
+          "gene": "ompK35_@fs_46_47_90604_121683_1",
+          "importance": 0.1154841482639312
+        },
+        {
+          "gene": "blaSHV_C-112A",
+          "importance": 0.1143076717853546
+        },
+        {
+          "gene": "blaNDM-7",
+          "importance": 0.1116862893104553
+        },
+        {
+          "gene": "blaCMY-2",
+          "importance": 0.0907323732972145
+        },
+        {
+          "gene": "tet(M)",
+          "importance": 0.0823704004287719
+        },
+        {
+          "gene": "blaKPC-3",
+          "importance": 0.0806635543704032
+        }
+      ]
+    },
+    {
+      "model": "dnabert",
+      "antibiotic": "meropenem",
+      "n_train": 317,
+      "n_test": 199,
+      "accuracy": 0.7035175879396985,
+      "balanced_accuracy": 0.7115566037735849,
+      "f1": 0.49572649572649574,
+      "precision": 0.37662337662337664,
+      "recall": 0.725,
+      "roc_auc": 0.7814465408805031,
+      "pr_auc": 0.3742603742495646,
+      "confusion_matrix": {
+        "tn": 111,
+        "fp": 48,
+        "fn": 11,
+        "tp": 29
+      },
+      "skipped": null,
+      "top_features": [
+        {
+          "gene": "blaSHV-33",
+          "importance": 0.1423093676567077
+        },
+        {
+          "gene": "blaSHV-57",
+          "importance": 0.119470402598381
+        },
+        {
+          "gene": "ompK36_@fs_184_185_110308_256106_1",
+          "importance": 0.1093906164169311
+        },
+        {
+          "gene": "blaSHV-133",
+          "importance": 0.097367912530899
+        },
+        {
+          "gene": "cirA_@del_418_419_63890_63893_0_STOP",
+          "importance": 0.0973634421825409
+        },
+        {
+          "gene": "cirA_@del_614_615_179047_179050_1_STOP",
+          "importance": 0.0972637832164764
+        },
+        {
+          "gene": "oqxR_@fs_117_118_47259_138590_1",
+          "importance": 0.0969605296850204
+        },
+        {
+          "gene": "ramR_@fs_96_97_0_336402_0",
+          "importance": 0.0961300134658813
+        },
+        {
+          "gene": "tet(M)",
+          "importance": 0.0800845623016357
+        },
+        {
+          "gene": "oqxA3",
+          "importance": 0.0678312256932258
+        }
+      ]
     }
   ]
 }

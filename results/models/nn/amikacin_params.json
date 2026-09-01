@@ -1,27 +1,22 @@
 {
   "model": "nn",
   "antibiotic": "amikacin",
-  "n_train": 44,
-  "n_test": 50,
-  "n_features": 172,
+  "n_train": 302,
+  "n_test": 178,
+  "n_features": 451,
   "hyperparameters": {
-    "epochs": 51,
+    "epochs": 69,
     "batch_size": 8,
-    "learning_rate": 0.00023270677083837802,
+    "learning_rate": 0.00010090486229986035,
     "hidden": [
-      128,
-      64
+      52,
+      44
     ],
-    "dropout": 0.36237821581611895,
-    "weight_decay": 8.179499475211674e-06,
-    "hidden0": 78,
-    "hidden1": 29,
-    "n_trials": 20,
-    "n_splits": 3,
-    "best_cv_roc_auc": 0.8493827160493828
+    "dropout": 0.22234414632247104,
+    "weight_decay": 0.0008325995909499308
   },
   "train_class_balance": {
-    "R": 17,
-    "S": 27
+    "R": 74,
+    "S": 228
   }
 }

@@ -1,14 +1,21 @@
 {
-  "n_estimators": 177,
-  "max_depth": 3,
-  "learning_rate": 0.022096526145513846,
-  "subsample": 0.5704621124873813,
-  "colsample_bytree": 0.9010984903770198,
-  "min_child_weight": 1,
-  "max_delta_step": 10,
-  "reg_alpha": 0.08916674715636537,
-  "reg_lambda": 6.143857495033091e-07,
-  "n_trials": 30,
-  "n_splits": 3,
-  "best_cv_roc_auc": 0.5555555555555555
+  "hyperparameters": {
+    "objective": "binary:logistic",
+    "eval_metric": "logloss",
+    "n_estimators": 236,
+    "max_depth": 7,
+    "learning_rate": 0.001047479546186881,
+    "subsample": 0.7674873204814068,
+    "colsample_bytree": 0.936864384029418,
+    "min_child_weight": 2,
+    "max_delta_step": 1,
+    "reg_alpha": 1.9210719624799435e-06,
+    "reg_lambda": 0.11242406912890918,
+    "random_state": 42
+  },
+  "tuning": {
+    "n_trials": 30,
+    "n_splits": 3,
+    "best_cv_roc_auc": 0.9628966291346592
+  }
 }

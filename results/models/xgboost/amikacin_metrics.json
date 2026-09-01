@@ -1,20 +1,21 @@
 {
   "model": "xgboost",
   "antibiotic": "amikacin",
-  "n_train": 44,
-  "n_test": 50,
-  "n_features": 172,
-  "accuracy": 0.88,
-  "balanced_accuracy": 0.4489795918367347,
-  "f1": 0.0,
-  "precision": 0.0,
-  "recall": 0.0,
-  "roc_auc": 0.7551020408163265,
-  "pr_auc": 0.07692307692307693,
+  "n_train": 302,
+  "n_test": 178,
+  "n_features": 451,
+  "threshold": 0.5399252772331238,
+  "accuracy": 0.9719101123595506,
+  "balanced_accuracy": 0.9564043209876543,
+  "f1": 0.8571428571428571,
+  "precision": 0.7894736842105263,
+  "recall": 0.9375,
+  "roc_auc": 0.9965277777777778,
+  "pr_auc": 0.9725378787878788,
   "confusion_matrix": {
-    "tn": 44,
-    "fp": 5,
+    "tn": 158,
+    "fp": 4,
     "fn": 1,
-    "tp": 0
+    "tp": 15
   }
 }

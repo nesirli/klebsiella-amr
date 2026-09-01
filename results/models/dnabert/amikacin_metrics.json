@@ -1,0 +1,22 @@
+{
+  "model": "dnabert",
+  "antibiotic": "amikacin",
+  "n_train": 302,
+  "n_test": 178,
+  "n_features": 686,
+  "device": "mps",
+  "threshold": 0.3109067380428314,
+  "accuracy": 0.6741573033707865,
+  "balanced_accuracy": 0.8209876543209876,
+  "f1": 0.35555555555555557,
+  "precision": 0.21621621621621623,
+  "recall": 1.0,
+  "roc_auc": 0.9467592592592593,
+  "pr_auc": 0.7154828202711268,
+  "confusion_matrix": {
+    "tn": 104,
+    "fp": 58,
+    "fn": 0,
+    "tp": 16
+  }
+}

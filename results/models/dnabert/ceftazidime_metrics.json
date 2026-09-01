@@ -1,0 +1,22 @@
+{
+  "model": "dnabert",
+  "antibiotic": "ceftazidime",
+  "n_train": 941,
+  "n_test": 177,
+  "n_features": 686,
+  "device": "mps",
+  "threshold": 0.4841727614402771,
+  "accuracy": 0.7796610169491526,
+  "balanced_accuracy": 0.47518518518518515,
+  "f1": 0.8753993610223643,
+  "precision": 0.8404907975460123,
+  "recall": 0.9133333333333333,
+  "roc_auc": 0.54320987654321,
+  "pr_auc": 0.8870173204228463,
+  "confusion_matrix": {
+    "tn": 1,
+    "fp": 26,
+    "fn": 13,
+    "tp": 137
+  }
+}

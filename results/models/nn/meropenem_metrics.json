@@ -1,20 +1,21 @@
 {
   "model": "nn",
   "antibiotic": "meropenem",
-  "n_train": 40,
-  "n_test": 47,
-  "n_features": 172,
-  "accuracy": 0.9361702127659575,
-  "balanced_accuracy": 0.7277777777777779,
-  "f1": 0.4,
-  "precision": 0.3333333333333333,
-  "recall": 0.5,
-  "roc_auc": 0.6888888888888889,
-  "pr_auc": 0.28448275862068967,
+  "n_train": 317,
+  "n_test": 199,
+  "n_features": 451,
+  "threshold": 0.45636340975761414,
+  "accuracy": 0.8492462311557789,
+  "balanced_accuracy": 0.8214622641509435,
+  "f1": 0.6739130434782609,
+  "precision": 0.5961538461538461,
+  "recall": 0.775,
+  "roc_auc": 0.8665094339622641,
+  "pr_auc": 0.8108337804041159,
   "confusion_matrix": {
-    "tn": 43,
-    "fp": 2,
-    "fn": 1,
-    "tp": 1
+    "tn": 138,
+    "fp": 21,
+    "fn": 9,
+    "tp": 31
   }
 }

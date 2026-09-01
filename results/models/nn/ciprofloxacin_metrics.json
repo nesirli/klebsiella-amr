@@ -1,20 +1,21 @@
 {
   "model": "nn",
   "antibiotic": "ciprofloxacin",
-  "n_train": 41,
-  "n_test": 45,
-  "n_features": 172,
-  "accuracy": 0.8444444444444444,
-  "balanced_accuracy": 0.7833333333333333,
-  "f1": 0.8923076923076924,
-  "precision": 0.8285714285714286,
-  "recall": 0.9666666666666667,
-  "roc_auc": 0.8577777777777778,
-  "pr_auc": 0.9297682734228027,
+  "n_train": 333,
+  "n_test": 188,
+  "n_features": 451,
+  "threshold": 0.5354713797569275,
+  "accuracy": 0.7393617021276596,
+  "balanced_accuracy": 0.7567619047619047,
+  "f1": 0.7822222222222223,
+  "precision": 0.88,
+  "recall": 0.704,
+  "roc_auc": 0.852063492063492,
+  "pr_auc": 0.915948039315722,
   "confusion_matrix": {
-    "tn": 9,
-    "fp": 6,
-    "fn": 1,
-    "tp": 29
+    "tn": 51,
+    "fp": 12,
+    "fn": 37,
+    "tp": 88
   }
 }

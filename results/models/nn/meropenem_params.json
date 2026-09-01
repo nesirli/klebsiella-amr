@@ -1,27 +1,22 @@
 {
   "model": "nn",
   "antibiotic": "meropenem",
-  "n_train": 40,
-  "n_test": 47,
-  "n_features": 172,
+  "n_train": 317,
+  "n_test": 199,
+  "n_features": 451,
   "hyperparameters": {
-    "epochs": 97,
+    "epochs": 52,
     "batch_size": 8,
-    "learning_rate": 0.00020511104188433984,
+    "learning_rate": 0.00010353677627159794,
     "hidden": [
-      128,
-      64
+      59,
+      73
     ],
-    "dropout": 0.5330880728874676,
-    "weight_decay": 1.493656855461763e-06,
-    "hidden0": 111,
-    "hidden1": 69,
-    "n_trials": 20,
-    "n_splits": 3,
-    "best_cv_roc_auc": 0.9291666666666667
+    "dropout": 0.243998406348453,
+    "weight_decay": 0.0006264278041381339
   },
   "train_class_balance": {
-    "R": 16,
-    "S": 24
+    "R": 206,
+    "S": 111
   }
 }

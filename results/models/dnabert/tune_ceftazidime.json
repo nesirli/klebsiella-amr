@@ -1,0 +1,17 @@
+{
+  "hyperparameters": {
+    "learning_rate": 6.893882309676885e-06,
+    "epochs": 1,
+    "batch_size": 4,
+    "max_length": 64,
+    "weight_decay": 0.00348901884549139,
+    "encode_batch": 8
+  },
+  "tuning": {
+    "n_trials": 5,
+    "n_splits": 2,
+    "best_cv_roc_auc": 0.9436383928571428,
+    "tuned_on_samples": 120,
+    "device": "mps"
+  }
+}

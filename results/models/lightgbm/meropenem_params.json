@@ -1,30 +1,27 @@
 {
   "model": "lightgbm",
   "antibiotic": "meropenem",
-  "n_train": 40,
-  "n_test": 47,
-  "n_features": 172,
+  "n_train": 317,
+  "n_test": 199,
+  "n_features": 451,
   "hyperparameters": {
     "objective": "binary",
     "metric": "binary_logloss",
-    "n_estimators": 113,
-    "num_leaves": 47,
-    "max_depth": 7,
-    "learning_rate": 0.09151993736511402,
-    "subsample": 0.8454988437229729,
-    "colsample_bytree": 0.6381560263854129,
-    "min_child_samples": 5,
-    "reg_alpha": 0.016193826977646514,
-    "reg_lambda": 4.74703459730783e-08,
+    "n_estimators": 127,
+    "num_leaves": 31,
+    "max_depth": 4,
+    "learning_rate": 0.017394290543048724,
+    "subsample": 0.5178342846096465,
+    "colsample_bytree": 0.7754771098036712,
+    "min_child_samples": 3,
+    "reg_alpha": 0.03500136613980167,
+    "reg_lambda": 3.6871355025138275e-05,
     "is_unbalance": true,
     "random_state": 42,
-    "verbose": -1,
-    "n_trials": 30,
-    "n_splits": 3,
-    "best_cv_roc_auc": 0.9361111111111112
+    "verbose": -1
   },
   "train_class_balance": {
-    "R": 16,
-    "S": 24
+    "R": 206,
+    "S": 111
   }
 }

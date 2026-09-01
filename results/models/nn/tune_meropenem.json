@@ -1,12 +1,18 @@
 {
-  "epochs": 97,
-  "batch_size": 8,
-  "learning_rate": 0.00020511104188433984,
-  "weight_decay": 1.493656855461763e-06,
-  "dropout": 0.5330880728874676,
-  "hidden0": 111,
-  "hidden1": 69,
-  "n_trials": 20,
-  "n_splits": 3,
-  "best_cv_roc_auc": 0.9291666666666667
+  "hyperparameters": {
+    "epochs": 52,
+    "batch_size": 8,
+    "learning_rate": 0.00010353677627159794,
+    "weight_decay": 0.0006264278041381339,
+    "dropout": 0.243998406348453,
+    "hidden": [
+      59,
+      73
+    ]
+  },
+  "tuning": {
+    "n_trials": 20,
+    "n_splits": 3,
+    "best_cv_roc_auc": 0.9193730175187976
+  }
 }
