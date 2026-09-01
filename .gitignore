@@ -31,3 +31,6 @@ results/models/dnabert/*_model.pt
 # What the app serves is committed under app/artifacts/ instead.
 results/features/
 results/sequences/
+
+# Local editor / tooling config, not project code
+.claude/

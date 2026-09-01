@@ -1,144 +1,174 @@
 # Klebsiella pneumoniae AMR prediction
 
-A minimal, reproducible pipeline that predicts antimicrobial resistance (AMR) in *Klebsiella pneumoniae* from Illumina reads using tree-based ensemble models and a small neural network.
+**Live app:** <https://nasirnesirli.com/portfolio/klebsiella-amr/app>
+(username `demo`, password `klebsiella2026`)
 
-## Workflow
+This project predicts antibiotic resistance in *Klebsiella pneumoniae* from
+sequencing data. It downloads bacterial genomes, finds resistance genes in
+them, and trains machine learning models to predict which antibiotics will
+work.
 
-1. **Metadata** — split NCBI Pathogen Detection metadata by collection year.
-2. **Reads** — download paired-end FASTQs from ENA.
-3. **QC / trim** — `fastp` trimming.
-4. **Taxonomic QC** — `Kraken2` classification against the standard-8 database.
-5. **Assembly QC** — `QUAST` assembly statistics.
-6. **Assembly** — `SPAdes` assembly.
-7. **AMR annotation** — `AMRFinderPlus` resistance gene calls.
-8. **Features** — gene presence/absence matrix joined to train/test labels.
-9. **Models** — XGBoost, LightGBM, and a manual PyTorch MLP, each with per-model interpretability (SHAP or permutation importance).
-10. **DNABERT-2** — optional sequence-level model.
-11. **Report** — single aggregated MultiQC report plus model metrics and top features.
+The whole pipeline runs with one command.
 
-## Quick start
+## What it does
 
-```bash
-# 1. Create conda environments
-mamba env create -f envs/env-ml.yml -n amr
-mamba env create -f envs/env-bio.yml -n bioinfo
+1. Reads sample metadata and splits it into a training set and a test set.
+2. Downloads the sequencing reads for each sample from ENA.
+3. Cleans the reads, checks their quality, and assembles a genome.
+4. Finds antibiotic resistance genes in each genome with AMRFinderPlus.
+5. Builds a table of which genes each sample has.
+6. Trains four models: XGBoost, LightGBM, a small neural network, and
+   DNABERT-2 (optional).
+7. Writes a quality report and a summary of the results.
 
-# 2. Dev run with 5 samples per split (10 samples, 20 FASTQ files)
-#    Use 'gmake' on macOS; 'make' on Linux
-gmake metadata MAX_SAMPLES=5
-gmake -j 4 all
-
-# 3. Larger dev run
-gmake metadata MAX_SAMPLES=20
-gmake -j 4 all
-
-# 4. Full run
-gmake metadata MAX_SAMPLES=-1
-gmake -j 8 all
-```
-
-## Configuration
-
-Edit `config.yaml` to change:
-
-- input metadata path
-- antibiotics and temporal split years
-- `max_samples` default (a `MAX_SAMPLES=N` on the command line overrides it)
-- reference database locations
-- per-tool thread/memory settings
-
-`config.yaml` is exported to make variables by `scripts/export_config.py`, so
-changing it re-runs whatever depends on it. Changing `MAX_SAMPLES` re-runs the
-split even though it is not a file.
-
-## Makefile targets
-
-| Target | Description |
-|--------|-------------|
-| `make setup` | Create the two conda environments |
-| `make metadata` | Parse metadata and create train/test splits |
-| `make tune` | Optuna hyperparameter search (runs automatically before training) |
-| `make models` | Train XGBoost, LightGBM, and NN |
-| `make dnabert` | Train optional DNABERT-2 model (run before `report` to include it in the summary) |
-| `make multiqc` | Build single aggregated MultiQC report |
-| `make report` | `multiqc` + aggregated metrics; then delete all intermediates |
-| `make all` | `report` |
-| `make clean` | Remove generated results, data, and reference databases |
-
-## Disk usage
-
-The pipeline deletes intermediate files as soon as they are no longer needed so it can scale to thousands of samples on a laptop.
-
-- **Per-sample cleanup**: as soon as AMRFinderPlus, Kraken2, and QUAST finish for a sample, its raw reads, trimmed reads, and downsampled reads are deleted. Assemblies are kept.
-- **Failed samples** are *retired*: every intermediate they own is deleted, including their `fastp` JSON, which drops them out of the active sample list so one bad accession cannot fail the run.
-- **`make report` final cleanup**: once the MultiQC report and summary are ready, `make report` deletes everything in `data/` except `data/assembly/`, plus `results/features/` and `results/sequences/`.
-- **Reference databases** (~10 GB total) are downloaded once and kept in `reference/`.
-- **During a run** you need enough temporary space for the samples currently in flight (roughly the size of their FASTQs plus assembled contigs), multiplied by the `-j` parallelism level.
-- **After `make report`** only `results/` and `data/assembly/` are kept: model files, predictions, importance tables, plots, `results/multiqc/multiqc_report.html`, `results/report/summary.json`, and `results/metadata/`.
-
-## Project structure
-
-```text
-.
-├── Makefile                  # pipeline orchestration
-├── config.yaml               # user-editable configuration
-├── modules/                  # Makefile includes, one per pipeline stage
-│   ├── config.mk             # config.yaml -> make variables
-│   ├── metadata.mk           # train/test split
-│   ├── pipeline.mk           # per-sample rules: download -> trim -> assemble -> AMR
-│   ├── features.mk           # gene matrices
-│   ├── models.mk             # tuning + training rules
-│   └── batch.mk              # batch driver, MultiQC, report
-├── envs/
-│   ├── env-ml.yml            # amr: Python + ML dependencies
-│   └── env-bio.yml           # bioinfo: fastp, spades, kraken2, quast, amrfinderplus, multiqc, seqtk
-├── metadata.csv              # input metadata (semicolon-delimited)
-├── scripts/
-│   ├── common.py             # shared data loading, metrics, artifacts, Optuna driver
-│   ├── mlp.py                # the MLP shared by train_nn.py and tune_nn.py
-│   ├── metadata.py
-│   ├── download_reads.py
-│   ├── build_features.py
-│   ├── build_sequences.py
-│   ├── export_config.py
-│   ├── summarize.py
-│   ├── train_{xgboost,lightgbm,nn,dnabert}.py
-│   └── tune_{xgboost,lightgbm,nn}.py
-├── reference/                # downloaded reference databases
-├── data/                     # transient per-sample files (auto-deleted)
-└── results/                  # features, models, reports (kept)
-```
-
-Every model script shares one contract, implemented in `scripts/common.py`: read a
-gene matrix, fit one binary R-vs-S classifier for one antibiotic, and emit the same
-six artifacts (model, params, metrics, predictions, importance CSV, importance
-plot). Only the estimator and its importance method differ between models. An
-antibiotic without enough labelled data to fit still emits all six, marked
-`"skipped"`, so a partial dataset cannot fail the run.
-
-Tuners hand hyperparameters to trainers as
-`{"hyperparameters": {...}, "tuning": {...}}` — search bookkeeping is kept out of
-the block that gets splatted into the estimator.
-
-## Interpretability
-
-Each model emits a `gene,importance` CSV (most important first) and a plot. The
-column is the same across models so they can be compared side by side; what fills
-it differs:
-
-- **XGBoost / LightGBM**: mean |SHAP| over the training rows, plotted as a SHAP beeswarm
-- **MLP**: permutation importance — drop in test ROC AUC when a gene column is shuffled
-- **DNABERT-2**: occlusion importance — drop in test P(resistant) when a gene is removed from the pooled embedding
-
-The `report` target aggregates per-model metrics and the top genes per
-model/antibiotic into `results/report/summary.json`. Models that were not run
-(DNABERT-2 is optional) are simply absent from it.
+The pipeline deletes large temporary files as soon as it no longer needs them,
+so it can run on a laptop.
 
 ## Requirements
 
 - [Miniforge](https://github.com/conda-forge/miniforge) (conda + mamba)
-- ~10 GB free space for reference databases (Kraken2 standard-8 + AMRFinderPlus)
-- Additional temporary space during runs for reads/assemblies
+- GNU Make. On macOS, install it with `brew install make` and use `gmake`.
+- About 10 GB of disk space for the reference databases.
+
+## Setup
+
+Create the two conda environments:
+
+```bash
+make setup
+```
+
+## How to run
+
+Start with a small test run of 5 samples per split:
+
+```bash
+gmake metadata MAX_SAMPLES=5
+gmake -j 3 all BATCH_SIZE=3
+```
+
+To use all samples, set `max_samples: -1` in `config.yaml` and run:
+
+```bash
+caffeinate -i gmake -j 3 all BATCH_SIZE=3
+```
+
+A full run takes several days. You can stop it at any time. If you run the
+same command again, it continues from where it stopped.
+
+To also train the optional DNABERT-2 model, run `gmake dnabert` **before**
+`gmake all`. It takes about 14 hours.
+
+## Configuration
+
+Edit `config.yaml`. The most useful settings are:
+
+| Setting | What it does |
+|---|---|
+| `antibiotics` | Which antibiotics to model |
+| `splits.mode` | `temporal` (train on old samples, test on new) or `random` |
+| `max_samples` | Limit the number of samples; `-1` means use all |
+| `resources` | Threads and memory for each tool |
+
+**Important:** set `resources` to match your computer. The pipeline runs
+`BATCH_SIZE` samples at the same time, and each one uses the threads you set.
+On a 12-core laptop with 18 GB of RAM, use `BATCH_SIZE=3` with 3 threads per
+tool and `spades_memory: 4`. Higher values will slow the run down or fill the
+memory.
+
+## Results
+
+From a run with 1184 samples. The numbers are ROC AUC on the test set (1.0 is
+perfect, 0.5 is random guessing):
+
+| Antibiotic | XGBoost | LightGBM | Neural net | DNABERT-2 |
+|---|---|---|---|---|
+| Amikacin | 1.00 | 1.00 | 1.00 | 0.95 |
+| Ciprofloxacin | 0.85 | 0.87 | 0.85 | 0.84 |
+| Ceftazidime | 0.62 | 0.62 | 0.68 | 0.54 |
+| Meropenem | 0.87 | 0.88 | 0.87 | 0.78 |
+
+Three things to know when you read these numbers:
+
+- **The models find the right genes.** For amikacin they rank `armA` and
+  `aac(6')-Ib` highest. For meropenem they rank `blaKPC-3` and `ompK36`
+  highest. These are the genes that really cause resistance.
+- **Ceftazidime looks bad, but the data is the problem.** With
+  `splits.mode: random`, the same models reach 0.94. The training years and
+  the test years contain very different samples, so the model cannot transfer
+  between them.
+- **DNABERT-2 is not worth its cost here.** It is as good as the other models
+  on two antibiotics and worse on two, but it needs about 14 hours instead of
+  a few seconds.
+
+## Web app
+
+**<https://nasirnesirli.com/portfolio/klebsiella-amr/app>** — username `demo`,
+password `klebsiella2026`.
+
+The app takes an assembled genome and shows the predicted resistance pattern.
+
+First set a password. Copy the example file and change the value:
+
+```bash
+cp .streamlit/secrets.toml.example .streamlit/secrets.toml
+```
+
+Then build the model files for the app and start it:
+
+```bash
+make app-artifacts
+make app
+```
+
+The app lives in the `app/` folder. It can also run in Docker, which is how it
+is deployed:
+
+```bash
+docker build -t klebsiella-amr-app app/
+docker run --rm -p 8501:8501 \
+  -e AMR_APP_USERNAME=demo -e AMR_APP_PASSWORD=klebsiella2026 \
+  klebsiella-amr-app
+```
+
+See `app/README.md` for the Coolify settings.
+
+The app first checks that the file really is a *Klebsiella pneumoniae* genome.
+It rejects other species, sequencing reads, and protein files, because the
+models only know *Klebsiella* and would give a confident but wrong answer for
+anything else.
+
+For each antibiotic the app shows two answers:
+
+- **AMRFinder rule** — is a resistance gene of this class present?
+- **Models** — XGBoost and LightGBM predictions.
+
+The two do not always agree, and the app marks it when they differ. A
+disagreement means you should look at the genes yourself.
+
+Neither answer is better everywhere. The rule is better for meropenem. The
+models are much better for ciprofloxacin, because almost every *Klebsiella*
+carries a quinolone gene, so the rule says "resistant" for nearly every sample.
+
+**Security:** the password is one shared word for a small group. It is not real
+user management. Run the app over HTTPS, and put a proper login in front of it
+if more people need access.
+
+## Limits
+
+- The pipeline runs Kraken2 to check species, but it does not remove samples
+  that fail this check.
+- `build_sequences.py` uses the wrong key for some genes, so DNABERT-2 sees
+  extra genes that should not be there.
+- Each model chooses its decision threshold from the training data. This helps
+  a lot when a model is badly calibrated, but it can be slightly too
+  optimistic.
+
+## More information
+
+`NOTES.md` explains the pipeline in more detail: how the Makefile dependencies
+work, how the pipeline handles network errors and failed samples, and the full
+results with their caveats. Read it before you change the Makefile.
 
 ## License
 
