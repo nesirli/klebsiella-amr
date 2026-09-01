@@ -111,4 +111,4 @@ instead of skipping verification.
 - Uploads are written to a temporary directory and deleted when the analysis
   finishes. They are not logged.
 - Predictions for ceftazidime are flagged in the UI as unreliable on recent
-  isolates — see the root `NOTES.md`.
+  isolates — see the main `README.md`.
