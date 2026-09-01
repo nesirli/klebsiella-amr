@@ -132,6 +132,85 @@ def test_tuning_pipeline(model, features, tmp_path):
         assert "f1" in metrics
 
 
+def test_threshold_rescues_a_ranking_the_default_cut_would_waste():
+    """A perfect ranking under 0.5 must still produce positive calls.
+
+    DNABERT-2 on amikacin ranked the test set at ROC AUC 0.980 and then
+    labelled all 178 isolates susceptible: its probabilities never reached the
+    hardcoded 0.5, because training was 74 resistant against 228 susceptible.
+    """
+    import sys
+    sys.path.insert(0, "scripts")
+    import common
+
+    y = np.array([0] * 20 + [1] * 5)
+    # Perfectly separable, but everything sits well below 0.5.
+    proba = np.concatenate([np.linspace(0.01, 0.05, 20), np.linspace(0.10, 0.14, 5)])
+
+    assert (proba >= 0.5).sum() == 0, "fixture should defeat the fixed cut"
+    threshold = common.choose_threshold(y, proba)
+    predicted = (proba >= threshold).astype(int)
+    assert predicted.sum() == 5 and (predicted == y).all()
+
+
+def test_threshold_falls_back_when_one_class_is_absent():
+    import sys
+    sys.path.insert(0, "scripts")
+    import common
+
+    assert common.choose_threshold(np.zeros(10), np.linspace(0, 1, 10)) == 0.5
+
+
+def test_dnabert_tuner_writes_the_same_handoff_as_the_others(tmp_path):
+    """DNABERT-2 has its own driver (it consumes sequences, not a float
+    matrix), so its handoff file has to be checked against the shared contract
+    independently. Uses the single-class skip path: exercising a real trial
+    would fine-tune a 117M-parameter encoder.
+    """
+    rows = []
+    for i in range(6):
+        row = {"run": f"SRR{i:05d}", "collection_date": "2020-01-01",
+               "year": 2020, "location": "Test"}
+        for abx in ANTIBIOTICS:
+            row[abx] = "R"  # single class -> tuner must skip, not crash
+        row["blaKPC-3"] = "ATGCGT" * 10
+        rows.append(row)
+    seqs = tmp_path / "train_sequences.csv"
+    pd.DataFrame(rows).to_csv(seqs, index=False)
+
+    out = tmp_path / "tune_amikacin.json"
+    _run("scripts/tune_dnabert.py",
+         "--train-features", seqs,
+         "--antibiotic", "amikacin",
+         "--all-antibiotics", *ANTIBIOTICS,
+         "--output", out,
+         "--n-trials", 1,
+         "--n-splits", 2)
+
+    result = json.loads(out.read_text())
+    assert set(result) == {"hyperparameters", "tuning"}
+    assert "skipped" in result["tuning"]
+    assert result["hyperparameters"] == {}
+
+
+def test_dnabert_search_space_covers_the_trainer_knobs():
+    """A tuned key the trainer ignores is a silently wasted search."""
+    import sys
+    sys.path.insert(0, "scripts")
+    import optuna
+
+    import tune_dnabert
+
+    params = tune_dnabert.suggest(optuna.trial.FixedTrial({
+        "learning_rate": 2e-5, "epochs": 2, "batch_size": 2,
+        "max_length": 128, "weight_decay": 1e-2,
+    }))
+    # Every searched key must be one train_dnabert.py actually reads.
+    trainer_knobs = {"epochs", "batch_size", "encode_batch", "max_length",
+                     "learning_rate", "weight_decay"}
+    assert set(params) <= trainer_knobs, set(params) - trainer_knobs
+
+
 def test_tuning_result_separates_hyperparameters_from_bookkeeping(features, tmp_path):
     """Search bookkeeping must not reach the estimator constructor.
 
@@ -189,6 +268,30 @@ def test_skipped_tuning_does_not_poison_training(features, tmp_path):
     metrics = _train("xgboost", "amikacin", train, test, tmp_path / "xgb",
                      params_input=tmp_path / "tune.json")
     assert "f1" in metrics
+
+
+def test_lone_minority_sample_skips_tuning_instead_of_crashing(features, tmp_path):
+    """A single susceptible isolate crashed the tuner instead of skipping.
+
+    With one S among 19 R, both classes exist so the old guard let the search
+    run; StratifiedKFold then put the lone S in one validation fold, that
+    fold's training half was all-R, and XGBoost raised on single-class y.
+    """
+    train, test = features
+    lone = pd.read_csv(train)
+    lone["amikacin"] = "R"
+    lone.loc[0, "amikacin"] = "S"
+    lopsided = tmp_path / "lopsided.csv"
+    lone.to_csv(lopsided, index=False)
+
+    tuned = _tune("xgboost", "amikacin", lopsided, tmp_path / "tune.json")
+    assert "skipped" in tuned["tuning"]
+    assert tuned["hyperparameters"] == {}
+
+    # Training still fits: one S is enough for a (degenerate) full-data fit.
+    metrics = _train("xgboost", "amikacin", lopsided, test, tmp_path / "xgb",
+                     params_input=tmp_path / "tune.json")
+    assert "skipped" not in metrics
 
 
 @pytest.mark.parametrize("model", list(MODELS))

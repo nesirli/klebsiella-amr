@@ -62,8 +62,10 @@ def main():
                        "train_class_balance": {"R": n_pos, "S": n_neg}})
 
     y_proba = model.predict_proba(x_test)[:, 1]
-    y_pred = model.predict(x_test)
-    metrics = common.compute_metrics(base, y_test, y_pred, y_proba)
+    threshold = common.choose_threshold(y_train, model.predict_proba(x_train)[:, 1])
+    y_pred = (y_proba >= threshold).astype(int)
+    metrics = common.compute_metrics({**base, "threshold": threshold},
+                                     y_test, y_pred, y_proba)
     common.write_json(args.metrics_output, metrics)
     common.write_predictions(args.predictions_output, test_runs, y_test, y_pred, y_proba)
 

@@ -140,6 +140,30 @@ def placeholder_png(path, text):
     plt.close(fig)
 
 
+def choose_threshold(y_train, proba_train):
+    """Decision threshold that maximises balanced accuracy on the TRAINING split.
+
+    A hardcoded 0.5 assumes calibrated probabilities over a balanced prior, and
+    neither holds here. DNABERT-2 on amikacin ranked the test set almost
+    perfectly (ROC AUC 0.980) yet called every one of 178 isolates susceptible,
+    because 74-vs-228 training labels kept every probability under 0.5. Picking
+    the cut where sensitivity and specificity balance turns that ranking into
+    usable calls.
+
+    Fitted on training predictions only: choosing it on the test split would
+    tune the answer to the thing being scored.
+    """
+    from sklearn.metrics import roc_curve
+
+    if len(np.unique(np.asarray(y_train))) < 2:
+        return 0.5
+    fpr, tpr, thresholds = roc_curve(y_train, proba_train)
+    # thresholds[0] is +inf (the "call nothing positive" corner); its Youden J
+    # is 0, so the argmax never lands there unless nothing separates at all.
+    best = float(thresholds[int(np.argmax(tpr - fpr))])
+    return float(min(max(best, 0.0), 1.0))
+
+
 def compute_metrics(base, y_true, y_pred, y_proba):
     """The metric block every model reports, with `base` merged in.
 
@@ -245,7 +269,9 @@ def cv_roc_auc(x, y, fit_predict, n_splits, seed=42):
     """Mean ROC AUC over stratified folds.
 
     `fit_predict(x_train, y_train, x_val)` returns P(resistant) for x_val.
-    Folds whose validation split ends up single-class contribute no AUC.
+    Folds where either side ends up single-class contribute no AUC: a
+    single-class validation split has no defined AUC, and a single-class
+    training split cannot fit a classifier at all (XGBoost raises).
     """
     from sklearn.model_selection import StratifiedKFold
 
@@ -254,10 +280,10 @@ def cv_roc_auc(x, y, fit_predict, n_splits, seed=42):
     skf = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=seed)
     aucs = []
     for train_idx, val_idx in skf.split(x, y):
-        y_val = y[val_idx]
-        if len(np.unique(y_val)) < 2:
+        y_train, y_val = y[train_idx], y[val_idx]
+        if len(np.unique(y_train)) < 2 or len(np.unique(y_val)) < 2:
             continue
-        proba = fit_predict(x[train_idx], y[train_idx], x[val_idx])
+        proba = fit_predict(x[train_idx], y_train, x[val_idx])
         aucs.append(roc_auc_score(y_val, proba))
     return float(np.mean(aucs)) if aucs else 0.0
 
@@ -279,7 +305,11 @@ def run_tuning(args, suggest, fit_predict):
     genes = read_genes(args.train_features, args.all_antibiotics)
     x, y, _ = load_arrays(args.train_features, args.antibiotic, genes)
 
-    if len(np.unique(y)) < 2 or len(y) < args.n_splits * 2:
+    # A minority class of one cannot stratify: the fold holding that sample in
+    # validation trains single-class, and every other fold validates
+    # single-class, so no trial can ever produce an AUC.
+    if (len(np.unique(y)) < 2 or len(y) < args.n_splits * 2
+            or np.bincount(y).min() < 2):
         write_tuning_result(args.output, {}, {"skipped": TUNE_SKIP_REASON})
         return
 
