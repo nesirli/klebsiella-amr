@@ -93,6 +93,10 @@ def check_login():
         border-radius: 10px;
         min-height: 3rem;
     }
+    .stApp [data-testid="stFormSubmitButton"] {
+        width: 100%;
+        display: flex;
+    }
     .stApp [data-testid="stFormSubmitButton"] button {
         width: 100%;
         border-radius: 10px;
