@@ -93,12 +93,7 @@ def check_login():
         border-radius: 10px;
         min-height: 3rem;
     }
-    .stApp [data-testid="stFormSubmitButton"] {
-        width: 100%;
-        display: flex;
-    }
     .stApp [data-testid="stFormSubmitButton"] button {
-        width: 100%;
         border-radius: 10px;
         min-height: 3rem;
         font-size: 1.05rem;
@@ -135,7 +130,7 @@ def check_login():
         password = st.text_input(
             "Password", type="password", label_visibility="collapsed",
             placeholder="Password")
-        submitted = st.form_submit_button("Sign in")
+        submitted = st.form_submit_button("Sign in", use_container_width=True)
         if submitted:
             ok_user = hmac.compare_digest(username, expected_user)
             ok_password = hmac.compare_digest(password, expected_password)
@@ -166,7 +161,7 @@ def main():
     manifest = load_manifest()
 
     with st.sidebar:
-        if st.button("Log out", width="stretch"):
+        if st.button("Log out", use_container_width=True):
             st.session_state.pop("authenticated", None)
             st.rerun()
         st.subheader("Models")
