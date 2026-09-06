@@ -19,6 +19,7 @@ from pathlib import Path
 
 import pandas as pd
 import streamlit as st
+from streamlit.errors import StreamlitSecretNotFoundError
 
 sys.path.insert(0, str(Path(__file__).parent))
 import predict as P  # noqa: E402
@@ -46,10 +47,18 @@ def check_login():
     if st.session_state.get("authenticated"):
         return True
 
-    expected_user = st.secrets.get(
-        "username", os.environ.get("AMR_APP_USERNAME", "demo"))
-    expected_password = st.secrets.get(
-        "password", os.environ.get("AMR_APP_PASSWORD", ""))
+    # st.secrets.get raises StreamlitSecretNotFoundError when no secrets.toml
+    # exists at all (which is the case on Railway, where the password comes
+    # from the environment). Its .get default only covers missing keys, not a
+    # missing file.
+    def secret(key, default):
+        try:
+            return st.secrets.get(key, default)
+        except StreamlitSecretNotFoundError:
+            return default
+
+    expected_user = secret("username", os.environ.get("AMR_APP_USERNAME", "demo"))
+    expected_password = secret("password", os.environ.get("AMR_APP_PASSWORD", ""))
 
     st.title("🧬 Klebsiella AMR prediction")
     if not expected_password:
