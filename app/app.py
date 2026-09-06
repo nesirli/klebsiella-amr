@@ -31,6 +31,8 @@ MANIFEST = os.environ.get("MANIFEST", str(HERE / "artifacts" / "manifest.json"))
 SPECIES_SKETCH = os.environ.get(
     "SPECIES_SKETCH", str(HERE / "artifacts" / "kpneumoniae_ref.msh"))
 AMRFINDER_DB = os.environ.get("AMRFINDER_DB", "reference/amrfinderplus")
+DEMO_FASTA = os.environ.get(
+    "DEMO_FASTA", str(HERE / "artifacts" / "demo_SRR30762169.fasta"))
 
 st.set_page_config(page_title="Klebsiella AMR prediction", page_icon="🧬",
                    layout="wide")
@@ -111,13 +113,27 @@ def main():
     uploaded = st.file_uploader(
         "Assembled genome (FASTA)", type=["fasta", "fa", "fna"],
         help="Contigs from an assembler such as SPAdes. Not raw reads.")
-    if not uploaded:
-        st.info("Upload an assembled *Klebsiella pneumoniae* genome to start.")
+    use_demo = st.button(
+        "Try a demo genome", disabled=uploaded is not None,
+        help="Analyse the bundled demo isolate instead of uploading a file.")
+    if not uploaded and not use_demo:
+        st.info("Upload an assembled *Klebsiella pneumoniae* genome, or try "
+                "the demo genome.")
         return
+    if use_demo and not Path(DEMO_FASTA).exists():
+        st.error(f"Demo genome missing from the image: `{DEMO_FASTA}`")
+        return
+    if use_demo:
+        st.caption(f"Demo isolate: **{Path(DEMO_FASTA).name}** — a "
+                   "multi-resistant test isolate from the training split's "
+                   "sister dataset.")
 
     with tempfile.TemporaryDirectory() as tmp:
-        fasta = Path(tmp) / uploaded.name
-        fasta.write_bytes(uploaded.getbuffer())
+        if uploaded:
+            fasta = Path(tmp) / uploaded.name
+            fasta.write_bytes(uploaded.getbuffer())
+        else:
+            fasta = Path(DEMO_FASTA)
 
         # The models only know K. pneumoniae. Anything else would still get a
         # confident answer, drawn from the wrong biology -- so check the

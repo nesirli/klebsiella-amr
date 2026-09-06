@@ -13,7 +13,8 @@ app/
 ├── artifacts/             baked into the image, produced by `make app-artifacts`
 │   ├── manifest.json      gene columns in training order + fitted thresholds
 │   ├── xgboost/*.json
-│   └── lightgbm/*.txt
+│   ├── lightgbm/*.txt
+│   └── demo_SRR30762169.fasta   bundled demo isolate for the "Try a demo genome" button
 ├── environment.yml        micromamba spec (bioinformatics + Python stack)
 ├── Dockerfile
 └── docker-entrypoint.sh   start-up checks
