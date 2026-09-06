@@ -62,21 +62,82 @@ def check_login():
     expected_user = secret("username", os.environ.get("AMR_APP_USERNAME", "demo"))
     expected_password = secret("password", os.environ.get("AMR_APP_PASSWORD", ""))
 
-    st.title("🧬 Klebsiella AMR prediction")
+    # Only injected while unauthenticated, so the analysis page keeps its wide
+    # layout: this CSS narrows the block to a small centered card and hides the
+    # Streamlit chrome behind it.
+    st.html("""<style>
+    .stApp .block-container {
+        max-width: 32rem;
+        margin: 0 auto;
+        padding-top: 9vh;
+    }
+    .stApp [data-testid="stHeader"] { display: none; }
+    .stApp [data-testid="stForm"] {
+        border: 1px solid rgba(128, 128, 128, 0.25);
+        border-radius: 20px;
+        padding: 3rem 3.25rem 2.5rem;
+        box-shadow: 0 16px 50px rgba(0, 0, 0, 0.10);
+    }
+    .stApp [data-testid="stForm"] .stVerticalBlock { gap: 1rem; }
+    .stApp [data-testid="stForm"] h3 {
+        font-size: 1.7rem;
+        text-align: center;
+        margin: 0 0 0.5rem 0;
+    }
+    .stApp [data-testid="stCaptionContainer"] {
+        text-align: center;
+        margin-bottom: 0.75rem;
+    }
+    .stApp [data-testid="stForm"] input {
+        font-size: 1.05rem;
+        border-radius: 10px;
+        min-height: 3rem;
+    }
+    .stApp [data-testid="stFormSubmitButton"] button {
+        width: 100%;
+        border-radius: 10px;
+        min-height: 3rem;
+        font-size: 1.05rem;
+        font-weight: 600;
+        padding: 0;
+        margin-top: 0.5rem;
+        background-color: #16a34a;
+        border-color: #16a34a;
+        color: #ffffff;
+        letter-spacing: 0.02em;
+    }
+    .stApp [data-testid="stFormSubmitButton"] button:hover {
+        background-color: #15803d;
+        border-color: #15803d;
+        color: #ffffff;
+    }
+    .stApp [data-testid="stFormSubmitButton"] button:active {
+        background-color: #166534;
+        border-color: #166534;
+        color: #ffffff;
+    }
+    </style>""")
+
     if not expected_password:
         st.error("No password configured. Set `AMR_APP_PASSWORD` in the "
                  "environment, or `password` in `.streamlit/secrets.toml`.")
         return False
 
-    username = st.text_input("Username")
-    password = st.text_input("Password", type="password")
-    if username or password:
-        ok_user = hmac.compare_digest(username, expected_user)
-        ok_password = hmac.compare_digest(password, expected_password)
-        if ok_user and ok_password:
-            st.session_state["authenticated"] = True
-            st.rerun()
-        elif username and password:
+    with st.form("login"):
+        st.markdown("### 🧬 Klebsiella AMR prediction")
+        st.caption("Sign in to analyse an assembled genome")
+        username = st.text_input(
+            "Username", label_visibility="collapsed", placeholder="Username")
+        password = st.text_input(
+            "Password", type="password", label_visibility="collapsed",
+            placeholder="Password")
+        submitted = st.form_submit_button("Sign in")
+        if submitted:
+            ok_user = hmac.compare_digest(username, expected_user)
+            ok_password = hmac.compare_digest(password, expected_password)
+            if ok_user and ok_password:
+                st.session_state["authenticated"] = True
+                st.rerun()
             st.error("Incorrect username or password.")
     return False
 
@@ -101,6 +162,9 @@ def main():
     manifest = load_manifest()
 
     with st.sidebar:
+        if st.button("Log out", width="stretch"):
+            st.session_state.pop("authenticated", None)
+            st.rerun()
         st.subheader("Models")
         st.write(f"Trained on **{manifest['n_genes']} genes**")
         st.write(f"Manifest built {manifest['created']}")
