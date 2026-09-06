@@ -1,6 +1,6 @@
 # Klebsiella pneumoniae AMR prediction
 
-**Live app:** <https://nasirnesirli.com/portfolio/klebsiella-amr/app>
+**Live app:** <https://klebsiella-amr.up.railway.app>
 (username `demo`, password `klebsiella2026`)
 
 This project predicts antibiotic resistance in *Klebsiella pneumoniae* from
@@ -103,7 +103,7 @@ Three things to know when you read these numbers:
 
 ## Web app
 
-**<https://nasirnesirli.com/portfolio/klebsiella-amr/app>** — username `demo`,
+**<https://klebsiella-amr.up.railway.app>** — username `demo`,
 password `klebsiella2026`.
 
 The app takes an assembled genome and shows the predicted resistance pattern.
@@ -125,13 +125,13 @@ The app lives in the `app/` folder. It can also run in Docker, which is how it
 is deployed:
 
 ```bash
-docker build -t klebsiella-amr-app app/
+docker build -t klebsiella-amr-app -f app/Dockerfile .
 docker run --rm -p 8501:8501 \
   -e AMR_APP_USERNAME=demo -e AMR_APP_PASSWORD=klebsiella2026 \
   klebsiella-amr-app
 ```
 
-See `app/README.md` for the Coolify settings.
+See `app/README.md` for the Railway settings.
 
 The app first checks that the file really is a *Klebsiella pneumoniae* genome.
 It rejects other species, sequencing reads, and protein files, because the

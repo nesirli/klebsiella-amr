@@ -1,7 +1,7 @@
 # Klebsiella AMR prediction — app
 
 Streamlit app: upload an assembled *Klebsiella pneumoniae* genome, get a
-predicted resistance pattern. Deployed to Coolify from this folder's
+predicted resistance pattern. Deployed to Railway from this folder's
 Dockerfile.
 
 ## Layout
@@ -33,9 +33,11 @@ the service down.
 
 ## Build and run locally
 
+The Dockerfile uses the repository root as context (it copies from `app/`):
+
 ```bash
 make app-artifacts                 # from the repo root, refreshes artifacts/
-docker build -t klebsiella-amr-app app/
+docker build -t klebsiella-amr-app -f app/Dockerfile .
 docker run --rm -p 8501:8501 \
   -e AMR_APP_USERNAME=demo -e AMR_APP_PASSWORD=klebsiella2026 \
   klebsiella-amr-app
@@ -49,36 +51,35 @@ To run without Docker (uses the repo's conda environments):
 make app
 ```
 
-## Coolify deployment
+## Railway deployment
 
-Live at <https://nasirnesirli.com/portfolio/klebsiella-amr/app>
+1. Create a new service from the repo. The root `railway.json` points Railway
+   at `app/Dockerfile`; the app is stateless (artifacts are baked into the
+   image, uploads are temporary), so no volume is needed.
+2. Set the environment variables on the service:
 
-| Setting | Value |
-|---|---|
-| Build pack | Dockerfile |
-| Base directory | `/app` |
-| Dockerfile location | `/app/Dockerfile` |
-| Port | `8501` |
+   | Variable | Value | Notes |
+   |---|---|---|
+   | `AMR_APP_USERNAME` | `demo` | Defaults to `demo` if unset. |
+   | `AMR_APP_PASSWORD` | `klebsiella2026` | Required. Set it in the dashboard, never in the image. |
+   | `BASE_URL_PATH` | *(empty)* | Leave empty to serve from the Railway domain root. |
 
-Environment variables:
-
-| Variable | Value | Notes |
-|---|---|---|
-| `AMR_APP_USERNAME` | `demo` | Defaults to `demo` if unset. |
-| `AMR_APP_PASSWORD` | `klebsiella2026` | Required. Set it here, never in the image. |
-| `BASE_URL_PATH` | `/portfolio/klebsiella-amr/app` | Must match the proxy path exactly, no trailing slash. |
+3. Deploy. `PORT` is injected by Railway; Streamlit listens on it and the
+   healthcheck hits `/_stcore/health`.
 
 `BASE_URL_PATH` is passed to `--server.baseUrlPath`, which is what makes
-Streamlit emit correctly prefixed asset **and websocket** URLs behind the
-subpath. Without it the page loads but the websocket 404s and the app hangs on
-"Please wait…".
+Streamlit emit correctly prefixed asset **and websocket** URLs when a reverse
+proxy serves the app behind a subpath. Without it the page loads but the
+websocket 404s and the app hangs on "Please wait…". Railway domains cannot
+serve paths, so leave it empty there; it exists for the
+`nasirnesirli.com/portfolio/...`-style setups.
 
 The image sets `--server.enableCORS=false` and
 `--server.enableXsrfProtection=false`, which Streamlit needs behind a reverse
 proxy that terminates TLS.
 
-Coolify's healthcheck can use the built-in `HEALTHCHECK`, which already accounts
-for `BASE_URL_PATH` (`{base}/_stcore/health`).
+The built-in `HEALTHCHECK` already accounts for `PORT` and `BASE_URL_PATH`
+(`{base}/_stcore/health`).
 
 ## Updating the models
 
@@ -106,7 +107,7 @@ instead of skipping verification.
 ## Notes
 
 - Research use only. Not a diagnostic tool.
-- The password is a single shared secret with no accounts or lockout. Coolify
+- The password is a single shared secret with no accounts or lockout. Railway
   terminates TLS in front of it; do not expose the container port directly.
 - Uploads are written to a temporary directory and deleted when the analysis
   finishes. They are not logged.
