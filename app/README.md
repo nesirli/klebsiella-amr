@@ -1,7 +1,7 @@
 # Klebsiella AMR prediction — app
 
 Streamlit app: upload an assembled *Klebsiella pneumoniae* genome, get a
-predicted resistance pattern. Deployed to Railway from this folder's
+predicted resistance pattern. Deployed with Dokploy from this folder's
 Dockerfile.
 
 ## Layout
@@ -52,35 +52,49 @@ To run without Docker (uses the repo's conda environments):
 make app
 ```
 
-## Railway deployment
+## Dokploy deployment
 
-1. Create a new service from the repo. The root `railway.json` points Railway
-   at `app/Dockerfile`; the app is stateless (artifacts are baked into the
-   image, uploads are temporary), so no volume is needed.
-2. Set the environment variables on the service:
+Dokploy builds with the repository root as the Docker context, so the
+Dockerfile path and context are set explicitly rather than inferred.
+
+1. Create an Application from the repo (`nesirli/klebsiella-amr`, branch
+   `main`). The app is stateless (artifacts are baked into the image, uploads
+   are temporary), so no volume is needed.
+2. On the **Build** tab choose **Dockerfile** and set:
+
+   | Field | Value |
+   |---|---|
+   | Dockerfile Path | `app/Dockerfile` |
+   | Docker Context Path | `.` |
+
+3. On the **Domains** tab add `klebsiella-amr.nasirnesirli.com`, container
+   port `8501`, and enable HTTPS (Let's Encrypt).
+4. Set the environment variables on the service:
 
    | Variable | Value | Notes |
    |---|---|---|
    | `AMR_APP_USERNAME` | `demo` | Defaults to `demo` if unset. |
    | `AMR_APP_PASSWORD` | `klebsiella2026` | Required. Set it in the dashboard, never in the image. |
-   | `BASE_URL_PATH` | *(empty)* | Leave empty to serve from the Railway domain root. |
+   | `BASE_URL_PATH` | *(empty)* | Leave empty to serve from the domain root. |
 
-3. Deploy. `PORT` is injected by Railway; Streamlit listens on it and the
+5. Deploy. Streamlit listens on `PORT` if set, otherwise `8501`, and the
    healthcheck hits `/_stcore/health`.
 
-`BASE_URL_PATH` is passed to `--server.baseUrlPath`, which is what makes
-Streamlit emit correctly prefixed asset **and websocket** URLs when a reverse
-proxy serves the app behind a subpath. Without it the page loads but the
-websocket 404s and the app hangs on "Please wait…". Railway domains cannot
-serve paths, so leave it empty there; it exists for the
-`nasirnesirli.com/portfolio/...`-style setups.
+Dokploy's Traefik proxy terminates TLS and forwards the websocket, so a
+dedicated subdomain needs no `BASE_URL_PATH`. `BASE_URL_PATH` is passed to
+`--server.baseUrlPath`, which is what makes Streamlit emit correctly prefixed
+asset **and websocket** URLs when a reverse proxy serves the app behind a
+subpath. Without it the page loads but the websocket 404s and the app hangs on
+"Please wait…"; it exists for `nasirnesirli.com/portfolio/...`-style setups.
 
 The image sets `--server.enableCORS=false` and
 `--server.enableXsrfProtection=false`, which Streamlit needs behind a reverse
 proxy that terminates TLS.
 
 The built-in `HEALTHCHECK` already accounts for `PORT` and `BASE_URL_PATH`
-(`{base}/_stcore/health`).
+(`{base}/_stcore/health`). Docker Swarm, which Dokploy uses, ignores the
+Dockerfile `HEALTHCHECK`; set the same path under **Advanced → Swarm →
+Healthcheck** to have Dokploy restart on failure.
 
 ## Updating the models
 
@@ -108,8 +122,9 @@ instead of skipping verification.
 ## Notes
 
 - Research use only. Not a diagnostic tool.
-- The password is a single shared secret with no accounts or lockout. Railway
-  terminates TLS in front of it; do not expose the container port directly.
+- The password is a single shared secret with no accounts or lockout. Dokploy's
+  Traefik proxy terminates TLS in front of it; do not expose the container port
+  directly.
 - Uploads are written to a temporary directory and deleted when the analysis
   finishes. They are not logged.
 - Predictions for ceftazidime are flagged in the UI as unreliable on recent

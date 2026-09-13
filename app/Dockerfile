@@ -40,7 +40,7 @@ ENV MANIFEST=/app/artifacts/manifest.json
 # BASE_URL_PATH lets a reverse proxy serve this behind a subpath (e.g.
 # /portfolio/klebsiella-amr/app) so Streamlit generates correctly prefixed
 # asset and websocket URLs. Leave unset to serve from the domain root (the
-# default on Railway).
+# default in the container).
 ENV BASE_URL_PATH=""
 
 # The password. Set it in the platform's environment, never in the image.
@@ -55,7 +55,7 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
 
 ENTRYPOINT ["/usr/local/bin/_entrypoint.sh", "/app/docker-entrypoint.sh"]
 
-# enableCORS=false + enableXsrfProtection=false are required behind Railway's
+# enableCORS=false + enableXsrfProtection=false are required behind Dokploy's
 # reverse proxy; the proxy terminates TLS and forwards the websocket.
 CMD ["sh", "-c", "streamlit run app.py \
     --server.address=0.0.0.0 \

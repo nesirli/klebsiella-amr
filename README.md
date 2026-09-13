@@ -1,6 +1,6 @@
 # Klebsiella pneumoniae AMR prediction
 
-**Live app:** <https://klebsiella-amr.up.railway.app>
+**Live app:** <https://klebsiella-amr.nasirnesirli.com>
 (username `demo`, password `klebsiella2026`)
 
 This project predicts antibiotic resistance in *Klebsiella pneumoniae* from
@@ -103,7 +103,7 @@ Three things to know when you read these numbers:
 
 ## Web app
 
-**<https://klebsiella-amr.up.railway.app>** — username `demo`,
+**<https://klebsiella-amr.nasirnesirli.com>** — username `demo`,
 password `klebsiella2026`.
 
 The app takes an assembled genome and shows the predicted resistance pattern.
@@ -131,7 +131,7 @@ docker run --rm -p 8501:8501 \
   klebsiella-amr-app
 ```
 
-See `app/README.md` for the Railway settings.
+See `app/README.md` for the Dokploy settings.
 
 The app first checks that the file really is a *Klebsiella pneumoniae* genome.
 It rejects other species, sequencing reads, and protein files, because the

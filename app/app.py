@@ -50,7 +50,7 @@ def check_login():
         return True
 
     # st.secrets.get raises StreamlitSecretNotFoundError when no secrets.toml
-    # exists at all (which is the case on Railway, where the password comes
+    # exists at all (which is the case in the container, where the password comes
     # from the environment). Its .get default only covers missing keys, not a
     # missing file.
     def secret(key, default):
